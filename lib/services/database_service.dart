@@ -84,6 +84,29 @@ class DatabaseService {
   Future<void> saveSale(Invoice inv) => _salesBox.put(inv.id, inv.toMap());
   Future<void> deleteSale(String id) => _salesBox.delete(id);
 
+  /// حفظ فاتورة بيع مع تحديث المخزون ورصيد العميل
+  Future<void> saveSaleWithSideEffects(Invoice inv, {Invoice? oldInvoice}) async {
+    // عكس التأثير القديم إن وجد
+    if (oldInvoice != null) {
+      _reverseInvoiceStock(oldInvoice, isSale: true);
+      _reverseInvoiceClientBalance(oldInvoice);
+    }
+    // تطبيق التأثير الجديد
+    _applyInvoiceStock(inv, isSale: true);
+    _applyInvoiceClientBalance(inv);
+    await _salesBox.put(inv.id, inv.toMap());
+  }
+
+  Future<void> deleteSaleWithSideEffects(String id) async {
+    final data = _salesBox.get(id);
+    if (data != null) {
+      final inv = Invoice.fromMap(Map<dynamic, dynamic>.from(data));
+      _reverseInvoiceStock(inv, isSale: true);
+      _reverseInvoiceClientBalance(inv);
+    }
+    await _salesBox.delete(id);
+  }
+
   // ============= PURCHASES =============
   List<Invoice> getPurchases() => _purchasesBox.values
       .map((e) => Invoice.fromMap(Map<dynamic, dynamic>.from(e)))
@@ -91,6 +114,90 @@ class DatabaseService {
 
   Future<void> savePurchase(Invoice inv) => _purchasesBox.put(inv.id, inv.toMap());
   Future<void> deletePurchase(String id) => _purchasesBox.delete(id);
+
+  /// حفظ فاتورة شراء مع تحديث المخزون ورصيد المورد
+  Future<void> savePurchaseWithSideEffects(Invoice inv, {Invoice? oldInvoice}) async {
+    if (oldInvoice != null) {
+      _reverseInvoiceStock(oldInvoice, isSale: false);
+      _reverseInvoiceSupplierBalance(oldInvoice);
+    }
+    _applyInvoiceStock(inv, isSale: false);
+    _applyInvoiceSupplierBalance(inv);
+    await _purchasesBox.put(inv.id, inv.toMap());
+  }
+
+  Future<void> deletePurchaseWithSideEffects(String id) async {
+    final data = _purchasesBox.get(id);
+    if (data != null) {
+      final inv = Invoice.fromMap(Map<dynamic, dynamic>.from(data));
+      _reverseInvoiceStock(inv, isSale: false);
+      _reverseInvoiceSupplierBalance(inv);
+    }
+    await _purchasesBox.delete(id);
+  }
+
+  // ============= HELPERS: Stock & Balance =============
+  void _applyInvoiceStock(Invoice inv, {required bool isSale}) {
+    for (var item in inv.items) {
+      if (item.productId.isEmpty) continue;
+      final data = _productsBox.get(item.productId);
+      if (data == null) continue;
+      final p = Product.fromMap(Map<dynamic, dynamic>.from(data));
+      // البيع ينقص المخزون، الشراء يزيده
+      p.quantity += isSale ? -item.quantity : item.quantity;
+      _productsBox.put(p.id, p.toMap());
+    }
+  }
+
+  void _reverseInvoiceStock(Invoice inv, {required bool isSale}) {
+    for (var item in inv.items) {
+      if (item.productId.isEmpty) continue;
+      final data = _productsBox.get(item.productId);
+      if (data == null) continue;
+      final p = Product.fromMap(Map<dynamic, dynamic>.from(data));
+      // العكس: البيع يعيد المخزون، الشراء يخصمه
+      p.quantity += isSale ? item.quantity : -item.quantity;
+      _productsBox.put(p.id, p.toMap());
+    }
+  }
+
+  void _applyInvoiceClientBalance(Invoice inv) {
+    if (inv.contactId.isEmpty) return;
+    final data = _clientsBox.get(inv.contactId);
+    if (data == null) return;
+    final c = Client.fromMap(Map<dynamic, dynamic>.from(data));
+    // رصيد العميل يزيد بالمتبقي (المبلغ المستحق له علينا مديناً)
+    c.balance += inv.remaining;
+    _clientsBox.put(c.id, c.toMap());
+  }
+
+  void _reverseInvoiceClientBalance(Invoice inv) {
+    if (inv.contactId.isEmpty) return;
+    final data = _clientsBox.get(inv.contactId);
+    if (data == null) return;
+    final c = Client.fromMap(Map<dynamic, dynamic>.from(data));
+    c.balance -= inv.remaining;
+    _clientsBox.put(c.id, c.toMap());
+  }
+
+  void _applyInvoiceSupplierBalance(Invoice inv) {
+    if (inv.contactId.isEmpty) return;
+    final data = _suppliersBox.get(inv.contactId);
+    if (data == null) return;
+    final s = Supplier.fromMap(Map<dynamic, dynamic>.from(data));
+    // رصيد المورد يزيد بالمتبقي (نحن مدينون له)
+    s.balance += inv.remaining;
+    _suppliersBox.put(s.id, s.toMap());
+  }
+
+  void _reverseInvoiceSupplierBalance(Invoice inv) {
+    if (inv.contactId.isEmpty) return;
+    final data = _suppliersBox.get(inv.contactId);
+    if (data == null) return;
+    final s = Supplier.fromMap(Map<dynamic, dynamic>.from(data));
+    s.balance -= inv.remaining;
+    _suppliersBox.put(s.id, s.toMap());
+  }
 
   // ============= EXPENSES =============
   List<Expense> getExpenses() => _expensesBox.values
@@ -107,6 +214,60 @@ class DatabaseService {
 
   Future<void> saveVoucher(Voucher v) => _vouchersBox.put(v.id, v.toMap());
   Future<void> deleteVoucher(String id) => _vouchersBox.delete(id);
+
+  /// حفظ السند مع تحديث رصيد العميل/المورد
+  Future<void> saveVoucherWithSideEffects(Voucher v, {Voucher? oldVoucher}) async {
+    if (oldVoucher != null) {
+      _reverseVoucherBalance(oldVoucher);
+    }
+    _applyVoucherBalance(v);
+    await _vouchersBox.put(v.id, v.toMap());
+  }
+
+  Future<void> deleteVoucherWithSideEffects(String id) async {
+    final data = _vouchersBox.get(id);
+    if (data != null) {
+      final v = Voucher.fromMap(Map<dynamic, dynamic>.from(data));
+      _reverseVoucherBalance(v);
+    }
+    await _vouchersBox.delete(id);
+  }
+
+  void _applyVoucherBalance(Voucher v) {
+    if (v.contactId.isEmpty) return;
+    if (v.contactType == 'client') {
+      final data = _clientsBox.get(v.contactId);
+      if (data == null) return;
+      final c = Client.fromMap(Map<dynamic, dynamic>.from(data));
+      // سند قبض: رصيد العميل ينقص، سند صرف: يزيد
+      c.balance += v.type == 'receipt' ? -v.amount : v.amount;
+      _clientsBox.put(c.id, c.toMap());
+    } else {
+      final data = _suppliersBox.get(v.contactId);
+      if (data == null) return;
+      final s = Supplier.fromMap(Map<dynamic, dynamic>.from(data));
+      // سند صرف لمورد: رصيد المورد ينقص، سند قبض منه: يزيد
+      s.balance += v.type == 'payment' ? -v.amount : v.amount;
+      _suppliersBox.put(s.id, s.toMap());
+    }
+  }
+
+  void _reverseVoucherBalance(Voucher v) {
+    if (v.contactId.isEmpty) return;
+    if (v.contactType == 'client') {
+      final data = _clientsBox.get(v.contactId);
+      if (data == null) return;
+      final c = Client.fromMap(Map<dynamic, dynamic>.from(data));
+      c.balance -= v.type == 'receipt' ? -v.amount : v.amount;
+      _clientsBox.put(c.id, c.toMap());
+    } else {
+      final data = _suppliersBox.get(v.contactId);
+      if (data == null) return;
+      final s = Supplier.fromMap(Map<dynamic, dynamic>.from(data));
+      s.balance -= v.type == 'payment' ? -v.amount : v.amount;
+      _suppliersBox.put(s.id, s.toMap());
+    }
+  }
 
   // ============= EXCHANGES =============
   List<CurrencyExchange> getExchanges() => _exchangesBox.values

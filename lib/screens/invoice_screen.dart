@@ -170,22 +170,70 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   }
 
   Widget _buildItemRow(int index, InvoiceItem item) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50, borderRadius: BorderRadius.circular(8)),
-      child: Row(children: [
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(item.productName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-            Text('${item.quantity} x ${formatCurrency(item.price)}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-          ]),
+    return InkWell(
+      onTap: () => _editItem(index, item),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
         ),
-        Text(formatCurrency(item.total), style: const TextStyle(fontWeight: FontWeight.bold)),
-        IconButton(icon: const Icon(Icons.close, size: 18, color: Colors.red),
-          onPressed: () => setState(() => _items.removeAt(index))),
-      ]),
+        child: Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(item.productName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              Text(
+                '${item.quantity} × ${formatCurrency(item.price)}'
+                '${item.discount > 0 ? ' - خصم ${formatCurrency(item.discount)}' : ''}',
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+            ]),
+          ),
+          Text(formatCurrency(item.total), style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(width: 4),
+          const Icon(Icons.edit, size: 16, color: Colors.blue),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18, color: Colors.red),
+            onPressed: () => setState(() => _items.removeAt(index)),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  void _editItem(int index, InvoiceItem item) {
+    final qtyC = TextEditingController(text: item.quantity.toString());
+    final priceC = TextEditingController(text: item.price.toString());
+    final discC = TextEditingController(text: item.discount.toString());
+    showDialog(
+      context: context,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text(item.productName),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            AppTextField(label: 'الكمية', controller: qtyC, keyboardType: TextInputType.number),
+            AppTextField(label: 'السعر', controller: priceC, keyboardType: TextInputType.number),
+            AppTextField(label: 'الخصم', controller: discC, keyboardType: TextInputType.number),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  item.quantity = int.tryParse(qtyC.text) ?? item.quantity;
+                  item.price = double.tryParse(priceC.text) ?? item.price;
+                  item.discount = double.tryParse(discC.text) ?? 0;
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('حفظ'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -258,6 +306,62 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
         const SnackBar(content: Text('أضف صنفاً واحداً على الأقل'), backgroundColor: Colors.red));
       return;
     }
+    if (_contactName.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('اختر ${isSale ? "عميل" : "مورد"} أولاً'), backgroundColor: Colors.red));
+      return;
+    }
+    // تحذير عند تجاوز المخزون في البيع
+    if (isSale && widget.invoice == null) {
+      final Map<String, int> required = {};
+      for (var it in _items) {
+        required[it.productId] = (required[it.productId] ?? 0) + it.quantity;
+      }
+      final List<String> warnings = [];
+      for (var entry in required.entries) {
+        final p = provider.products.firstWhere(
+          (x) => x.id == entry.key,
+          orElse: () => Product(id: '', name: ''),
+        );
+        if (p.id.isNotEmpty && p.quantity < entry.value) {
+          warnings.add('${p.name}: متاح ${p.quantity} - مطلوب ${entry.value}');
+        }
+      }
+      if (warnings.isNotEmpty) {
+        showDialog(
+          context: context,
+          builder: (_) => Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              title: const Text('تحذير: الكمية في المخزون غير كافية'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: warnings.map((w) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Text('• $w'),
+                )).toList(),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _doSave(provider);
+                  },
+                  child: const Text('متابعة رغم ذلك'),
+                ),
+              ],
+            ),
+          ),
+        );
+        return;
+      }
+    }
+    _doSave(provider);
+  }
+
+  void _doSave(AppProvider provider) {
     final inv = Invoice(
       id: widget.invoice?.id ?? provider.generateId(),
       type: widget.type, contactId: _contactId, contactName: _contactName,
@@ -265,7 +369,11 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       notes: _notesC.text, date: DateTime.now(),
       createdAt: widget.invoice?.createdAt ?? DateTime.now(),
     );
-    if (isSale) { provider.saveSale(inv); } else { provider.savePurchase(inv); }
+    if (isSale) {
+      provider.saveSale(inv, oldInvoice: widget.invoice);
+    } else {
+      provider.savePurchase(inv, oldInvoice: widget.invoice);
+    }
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('تم حفظ ${isSale ? "فاتورة البيع" : "فاتورة الشراء"}'),

@@ -87,13 +87,25 @@ class AppProvider extends ChangeNotifier {
 
   // Sales
   List<Invoice> get sales => _db.getSales();
-  Future<void> saveSale(Invoice inv) async { await _db.saveSale(inv); notifyListeners(); }
-  Future<void> deleteSale(String id) async { await _db.deleteSale(id); notifyListeners(); }
+  Future<void> saveSale(Invoice inv, {Invoice? oldInvoice}) async {
+    await _db.saveSaleWithSideEffects(inv, oldInvoice: oldInvoice);
+    notifyListeners();
+  }
+  Future<void> deleteSale(String id) async {
+    await _db.deleteSaleWithSideEffects(id);
+    notifyListeners();
+  }
 
   // Purchases
   List<Invoice> get purchases => _db.getPurchases();
-  Future<void> savePurchase(Invoice inv) async { await _db.savePurchase(inv); notifyListeners(); }
-  Future<void> deletePurchase(String id) async { await _db.deletePurchase(id); notifyListeners(); }
+  Future<void> savePurchase(Invoice inv, {Invoice? oldInvoice}) async {
+    await _db.savePurchaseWithSideEffects(inv, oldInvoice: oldInvoice);
+    notifyListeners();
+  }
+  Future<void> deletePurchase(String id) async {
+    await _db.deletePurchaseWithSideEffects(id);
+    notifyListeners();
+  }
 
   // Expenses
   List<Expense> get expenses => _db.getExpenses();
@@ -102,8 +114,14 @@ class AppProvider extends ChangeNotifier {
 
   // Vouchers
   List<Voucher> get vouchers => _db.getVouchers();
-  Future<void> saveVoucher(Voucher v) async { await _db.saveVoucher(v); notifyListeners(); }
-  Future<void> deleteVoucher(String id) async { await _db.deleteVoucher(id); notifyListeners(); }
+  Future<void> saveVoucher(Voucher v, {Voucher? oldVoucher}) async {
+    await _db.saveVoucherWithSideEffects(v, oldVoucher: oldVoucher);
+    notifyListeners();
+  }
+  Future<void> deleteVoucher(String id) async {
+    await _db.deleteVoucherWithSideEffects(id);
+    notifyListeners();
+  }
 
   // Exchanges
   List<CurrencyExchange> get exchanges => _db.getExchanges();
