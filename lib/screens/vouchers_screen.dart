@@ -12,18 +12,29 @@ class VouchersScreen extends StatefulWidget {
 
 class _VouchersScreenState extends State<VouchersScreen> with SingleTickerProviderStateMixin {
   late TabController _tabC;
+  String _search = '';
 
   @override
   void initState() { super.initState(); _tabC = TabController(length: 2, vsync: this); }
   @override
   void dispose() { _tabC.dispose(); super.dispose(); }
 
+  List<Voucher> _filter(List<Voucher> list) {
+    if (_search.isEmpty) return list;
+    final q = _search.toLowerCase();
+    return list.where((v) =>
+      v.contactName.toLowerCase().contains(q) ||
+      v.paymentMethod.toLowerCase().contains(q) ||
+      v.notes.toLowerCase().contains(q)
+    ).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
-        final receipts = provider.vouchers.where((v) => v.type == 'receipt').toList();
-        final payments = provider.vouchers.where((v) => v.type == 'payment').toList();
+        final receipts = _filter(provider.vouchers.where((v) => v.type == 'receipt').toList());
+        final payments = _filter(provider.vouchers.where((v) => v.type == 'payment').toList());
         return Directionality(
           textDirection: TextDirection.rtl,
           child: Scaffold(
@@ -40,9 +51,14 @@ class _VouchersScreenState extends State<VouchersScreen> with SingleTickerProvid
             floatingActionButton: FloatingActionButton.extended(
               onPressed: () => _showForm(context, provider),
               icon: const Icon(Icons.add), label: const Text('سند جديد')),
-            body: TabBarView(controller: _tabC, children: [
-              _buildList(context, receipts, provider, 'receipt'),
-              _buildList(context, payments, provider, 'payment'),
+            body: Column(children: [
+              SearchField(hint: 'بحث عن سند...', onChanged: (v) => setState(() => _search = v)),
+              Expanded(
+                child: TabBarView(controller: _tabC, children: [
+                  _buildList(context, receipts, provider, 'receipt'),
+                  _buildList(context, payments, provider, 'payment'),
+                ]),
+              ),
             ]),
           ),
         );

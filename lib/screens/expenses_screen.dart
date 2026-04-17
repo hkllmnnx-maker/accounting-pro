@@ -12,6 +12,7 @@ class ExpensesScreen extends StatefulWidget {
 
 class _ExpensesScreenState extends State<ExpensesScreen> {
   String _selectedCategory = 'الكل';
+  String _search = '';
   final _categories = ['الكل', 'إيجار', 'مرافق', 'صيانة', 'نقل', 'رواتب', 'أخرى'];
 
   @override
@@ -21,6 +22,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         var expenses = provider.expenses;
         if (_selectedCategory != 'الكل') {
           expenses = expenses.where((e) => e.category == _selectedCategory).toList();
+        }
+        if (_search.isNotEmpty) {
+          final q = _search.toLowerCase();
+          expenses = expenses.where((e) =>
+            e.title.toLowerCase().contains(q) ||
+            e.category.toLowerCase().contains(q) ||
+            e.notes.toLowerCase().contains(q)
+          ).toList();
         }
         final total = expenses.fold(0.0, (s, e) => s + e.amount);
         return Directionality(
@@ -55,6 +64,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   ),
                 ]),
               ),
+              SearchField(hint: 'بحث عن مصروف...', onChanged: (v) => setState(() => _search = v)),
               Expanded(
                 child: expenses.isEmpty
                     ? const EmptyState(message: 'لا يوجد مصاريف', icon: Icons.money_off)
