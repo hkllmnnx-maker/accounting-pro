@@ -267,21 +267,27 @@ class DatabaseService {
       Client(id: 'c4', name: 'عبدالله حسن', phone: '0567778899', address: 'مكة', balance: 8000),
       Client(id: 'c5', name: 'فهد ابراهيم', phone: '0534445566', address: 'المدينة', balance: 2700),
     ];
-    for (var c in clients) await saveClient(c);
+    for (var c in clients) {
+      await saveClient(c);
+    }
 
     final suppliers = [
       Supplier(id: 's1', name: 'شركة النور للتوريدات', phone: '0112223344', address: 'الرياض', balance: 15000),
       Supplier(id: 's2', name: 'مؤسسة الأمل التجارية', phone: '0115556677', address: 'جدة', balance: 8500),
       Supplier(id: 's3', name: 'شركة الفجر', phone: '0118889900', address: 'الدمام', balance: 6200),
     ];
-    for (var s in suppliers) await saveSupplier(s);
+    for (var s in suppliers) {
+      await saveSupplier(s);
+    }
 
     final employees = [
       Employee(id: 'e1', name: 'سعد الدوسري', phone: '0541112233', position: 'محاسب', salary: 7000),
       Employee(id: 'e2', name: 'عمر الشهري', phone: '0542223344', position: 'مدير مبيعات', salary: 9000),
       Employee(id: 'e3', name: 'يوسف القحطاني', phone: '0543334455', position: 'أمين مخزن', salary: 5500),
     ];
-    for (var e in employees) await saveEmployee(e);
+    for (var e in employees) {
+      await saveEmployee(e);
+    }
 
     final products = [
       Product(id: 'p1', name: 'لابتوب HP', category: 'إلكترونيات', buyPrice: 2500, sellPrice: 3200, quantity: 15, unit: 'قطعة'),
@@ -293,7 +299,9 @@ class DatabaseService {
       Product(id: 'p7', name: 'ماوس لاسلكي', category: 'إلكترونيات', buyPrice: 60, sellPrice: 95, quantity: 80, unit: 'قطعة'),
       Product(id: 'p8', name: 'كرسي مكتبي', category: 'أثاث', buyPrice: 350, sellPrice: 500, quantity: 20, unit: 'قطعة'),
     ];
-    for (var p in products) await saveProduct(p);
+    for (var p in products) {
+      await saveProduct(p);
+    }
 
     final now = DateTime.now();
     final sales = [
@@ -308,7 +316,9 @@ class DatabaseService {
         items: [InvoiceItem(productId: 'p5', productName: 'شاشة سامسونج', quantity: 1, price: 1600)],
         tax: 15, paid: 1840, date: now.subtract(const Duration(days: 3))),
     ];
-    for (var s in sales) await saveSale(s);
+    for (var s in sales) {
+      await saveSale(s);
+    }
 
     final purchases = [
       Invoice(id: 'pur1', type: 'purchase', contactId: 's1', contactName: 'شركة النور للتوريدات',
@@ -318,7 +328,9 @@ class DatabaseService {
         items: [InvoiceItem(productId: 'p3', productName: 'ورق A4', quantity: 100, price: 15)],
         tax: 15, paid: 1500, date: now.subtract(const Duration(days: 5))),
     ];
-    for (var p in purchases) await savePurchase(p);
+    for (var p in purchases) {
+      await savePurchase(p);
+    }
 
     final expensesList = [
       Expense(id: 'exp1', title: 'إيجار المكتب', category: 'إيجار', amount: 5000, date: now),
@@ -326,7 +338,9 @@ class DatabaseService {
       Expense(id: 'exp3', title: 'صيانة طابعة', category: 'صيانة', amount: 350, date: now.subtract(const Duration(days: 4))),
       Expense(id: 'exp4', title: 'نقل بضائع', category: 'نقل', amount: 600, date: now.subtract(const Duration(days: 2))),
     ];
-    for (var e in expensesList) await saveExpense(e);
+    for (var e in expensesList) {
+      await saveExpense(e);
+    }
 
     final vouchersList = [
       Voucher(id: 'v1', type: 'receipt', contactId: 'c1', contactName: 'احمد محمد',
@@ -334,7 +348,9 @@ class DatabaseService {
       Voucher(id: 'v2', type: 'payment', contactId: 's1', contactName: 'شركة النور للتوريدات',
         contactType: 'supplier', amount: 5000, paymentMethod: 'تحويل بنكي', date: now.subtract(const Duration(days: 1))),
     ];
-    for (var v in vouchersList) await saveVoucher(v);
+    for (var v in vouchersList) {
+      await saveVoucher(v);
+    }
   }
 
   String generateId() => DateTime.now().millisecondsSinceEpoch.toString();

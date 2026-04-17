@@ -132,8 +132,9 @@ class _QuotesScreenState extends State<QuotesScreen> with SingleTickerProviderSt
                 const SnackBar(content: Text('تم تحويل العرض إلى فاتورة بيع'), backgroundColor: Colors.green));
             }
           }
-          if (action == 'delete' && await confirmDelete(context, quote.type == 'quote' ? 'العرض' : 'الطلب'))
+          if (action == 'delete' && await confirmDelete(context, quote.type == 'quote' ? 'العرض' : 'الطلب')) {
             provider.deleteQuote(quote.id);
+          }
         },
       ),
     );

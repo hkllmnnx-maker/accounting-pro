@@ -79,7 +79,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
           const Text(' | ', style: TextStyle(fontSize: 11, color: Colors.grey)),
           Text('بيع: ${formatCurrency(product.sellPrice)}', style: const TextStyle(fontSize: 11, color: Colors.green)),
           const Text(' | ', style: TextStyle(fontSize: 11, color: Colors.grey)),
-          Text('${product.category}', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+          Text(product.category, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
         ]),
         trailing: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Text('${product.quantity}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16,

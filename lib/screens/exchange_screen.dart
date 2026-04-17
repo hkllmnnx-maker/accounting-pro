@@ -125,8 +125,9 @@ class _ExchangeScreenState extends State<ExchangeScreen> {
         trailing: Text(formatCurrency(ex.result),
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber.shade700)),
         onLongPress: () async {
-          if (await confirmDelete(context, 'عملية الصرف'))
+          if (await confirmDelete(context, 'عملية الصرف')) {
             provider.deleteExchange(ex.id);
+          }
         },
       ),
     );

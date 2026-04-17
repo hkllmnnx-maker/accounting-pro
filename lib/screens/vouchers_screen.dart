@@ -94,8 +94,9 @@ class _VouchersScreenState extends State<VouchersScreen> with SingleTickerProvid
             color: isReceipt ? Colors.green : Colors.red)),
         onTap: () => _showForm(context, provider, voucher: voucher),
         onLongPress: () async {
-          if (await confirmDelete(context, '${isReceipt ? "سند قبض" : "سند صرف"}'))
+          if (await confirmDelete(context, isReceipt ? "سند قبض" : "سند صرف")) {
             provider.deleteVoucher(voucher.id);
+          }
         },
       ),
     );

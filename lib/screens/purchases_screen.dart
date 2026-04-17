@@ -76,8 +76,9 @@ class PurchasesScreen extends StatelessWidget {
         onTap: () => Navigator.push(context, MaterialPageRoute(
           builder: (_) => InvoiceScreen(type: 'purchase', invoice: inv))),
         onLongPress: () async {
-          if (await confirmDelete(context, 'فاتورة #${inv.id.substring(0, 6)}'))
+          if (await confirmDelete(context, 'فاتورة #${inv.id.substring(0, 6)}')) {
             provider.deletePurchase(inv.id);
+          }
         },
       ),
     );

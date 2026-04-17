@@ -180,7 +180,7 @@ class HomeScreen extends StatelessWidget {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const PurchasesScreen()))),
       _DashItem('المصاريف', _formatNum(stats['totalExpenses'] ?? 0), Icons.money_off, Colors.red, () =>
           Navigator.push(context, MaterialPageRoute(builder: (_) => const ExpensesScreen()))),
-      _DashItem('السندات', '${(stats['clientsBalance'] as double).toStringAsFixed(0)}', Icons.receipt, Colors.indigo, () =>
+      _DashItem('السندات', (stats['clientsBalance'] as double).toStringAsFixed(0), Icons.receipt, Colors.indigo, () =>
           Navigator.push(context, MaterialPageRoute(builder: (_) => const VouchersScreen()))),
     ];
 

@@ -76,8 +76,9 @@ class SalesScreen extends StatelessWidget {
         onTap: () => Navigator.push(context, MaterialPageRoute(
           builder: (_) => InvoiceScreen(type: 'sale', invoice: inv))),
         onLongPress: () async {
-          if (await confirmDelete(context, 'فاتورة #${inv.id.substring(0, 6)}'))
+          if (await confirmDelete(context, 'فاتورة #${inv.id.substring(0, 6)}')) {
             provider.deleteSale(inv.id);
+          }
         },
       ),
     );
