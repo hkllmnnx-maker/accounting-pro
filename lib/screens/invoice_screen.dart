@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../models/models.dart';
 import '../widgets/common_widgets.dart';
+import '../services/pdf_service.dart';
 
 class InvoiceScreen extends StatefulWidget {
   final String type;
@@ -58,6 +59,18 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
           backgroundColor: isSale ? Colors.green.shade700 : Colors.orange.shade700,
           foregroundColor: Colors.white,
           actions: [
+            if (widget.invoice != null) ...[
+              IconButton(
+                icon: const Icon(Icons.print),
+                tooltip: 'طباعة',
+                onPressed: () => _printInvoice(provider),
+              ),
+              IconButton(
+                icon: const Icon(Icons.share),
+                tooltip: 'مشاركة',
+                onPressed: () => _shareInvoice(provider),
+              ),
+            ],
             IconButton(icon: const Icon(Icons.save), onPressed: () => _save(provider)),
           ],
         ),
@@ -257,5 +270,63 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('تم حفظ ${isSale ? "فاتورة البيع" : "فاتورة الشراء"}'),
         backgroundColor: Colors.green));
+  }
+
+  Invoice _currentInvoice(AppProvider provider) {
+    return Invoice(
+      id: widget.invoice?.id ?? provider.generateId(),
+      type: widget.type,
+      contactId: _contactId,
+      contactName: _contactName,
+      items: _items,
+      discount: discount,
+      tax: taxRate,
+      paid: paid,
+      notes: _notesC.text,
+      date: widget.invoice?.date ?? DateTime.now(),
+      createdAt: widget.invoice?.createdAt ?? DateTime.now(),
+    );
+  }
+
+  Future<void> _printInvoice(AppProvider provider) async {
+    try {
+      final inv = _currentInvoice(provider);
+      final doc = await PdfService.generateInvoicePdf(
+        invoice: inv,
+        companyName: provider.companyName,
+        companyPhone: provider.companyPhone,
+        companyAddress: provider.companyAddress,
+        currency: provider.currency,
+      );
+      await PdfService.printInvoice(doc,
+          '${isSale ? "Sale" : "Purchase"}-${inv.id.substring(0, inv.id.length > 8 ? 8 : inv.id.length)}');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ في الطباعة: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _shareInvoice(AppProvider provider) async {
+    try {
+      final inv = _currentInvoice(provider);
+      final doc = await PdfService.generateInvoicePdf(
+        invoice: inv,
+        companyName: provider.companyName,
+        companyPhone: provider.companyPhone,
+        companyAddress: provider.companyAddress,
+        currency: provider.currency,
+      );
+      await PdfService.shareInvoice(doc,
+          '${isSale ? "Sale" : "Purchase"}-${inv.id.substring(0, inv.id.length > 8 ? 8 : inv.id.length)}');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ في المشاركة: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 }
