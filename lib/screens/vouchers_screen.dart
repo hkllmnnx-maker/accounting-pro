@@ -204,13 +204,19 @@ class _VouchersScreenState extends State<VouchersScreen> with SingleTickerProvid
                 SizedBox(width: double.infinity, child: ElevatedButton(
                   onPressed: () {
                     if (!formKey.currentState!.validate()) return;
+                    if (contactId.isEmpty) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(content: Text('اختر الحساب أولاً'), backgroundColor: Colors.red));
+                      return;
+                    }
                     provider.saveVoucher(Voucher(
                       id: voucher?.id ?? provider.generateId(),
                       type: type, contactId: contactId, contactName: contactName,
                       contactType: contactType, amount: double.tryParse(amountC.text) ?? 0,
                       paymentMethod: paymentMethod, notes: notesC.text,
                       date: voucher?.date ?? DateTime.now(),
-                      createdAt: voucher?.createdAt ?? DateTime.now()));
+                      createdAt: voucher?.createdAt ?? DateTime.now()),
+                      oldVoucher: voucher);
                     Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(

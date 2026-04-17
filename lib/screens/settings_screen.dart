@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../widgets/common_widgets.dart';
+import 'lock_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -101,6 +102,33 @@ class SettingsScreen extends StatelessWidget {
                         subtitle: Text(provider.currency),
                         trailing: const Icon(Icons.edit, size: 18),
                         onTap: () => _selectCurrency(context, provider),
+                      ),
+                    ],
+                  ),
+                ),
+                _sectionTitle(context, 'الأمان'),
+                Card(
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        secondary: Icon(Icons.lock, color: provider.isLockEnabled ? Colors.green : Colors.grey),
+                        title: const Text('قفل التطبيق برمز PIN'),
+                        subtitle: Text(provider.isLockEnabled
+                            ? 'القفل مفعّل'
+                            : 'إضافة حماية برمز PIN (4 أرقام)'),
+                        value: provider.isLockEnabled,
+                        onChanged: (val) async {
+                          if (val) {
+                            // إنشاء رمز جديد
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const LockScreen(isSetup: true)),
+                            );
+                          } else {
+                            // إلغاء القفل - يتطلب إدخال الرمز الحالي أولاً
+                            _confirmRemoveLock(context, provider);
+                          }
+                        },
                       ),
                     ],
                   ),
@@ -416,6 +444,66 @@ class SettingsScreen extends StatelessWidget {
                 }
               },
               child: const Text('استعادة', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmRemoveLock(BuildContext context, AppProvider provider) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('تأكيد إزالة القفل'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('أدخل رمز القفل الحالي لتأكيد الإلغاء:'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                obscureText: true,
+                maxLength: 4,
+                textAlign: TextAlign.center,
+                decoration: const InputDecoration(
+                  hintText: '••••',
+                  counterText: '',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+            ElevatedButton(
+              onPressed: () async {
+                if (provider.verifyLockPin(controller.text)) {
+                  await provider.removeLockPin();
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('تم إلغاء قفل التطبيق'),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  }
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('رمز القفل غير صحيح'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('تأكيد'),
             ),
           ],
         ),

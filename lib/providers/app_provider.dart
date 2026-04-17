@@ -26,6 +26,9 @@ class AppProvider extends ChangeNotifier {
   String _companyAddress = '';
   String get companyAddress => _companyAddress;
 
+  String _lockPin = '';
+  bool get isLockEnabled => _lockPin.isNotEmpty;
+
   void _loadSettings() {
     try {
       final box = Hive.box('settings');
@@ -35,8 +38,23 @@ class AppProvider extends ChangeNotifier {
       _companyName = box.get('companyName', defaultValue: 'شركتي') as String;
       _companyPhone = box.get('companyPhone', defaultValue: '') as String;
       _companyAddress = box.get('companyAddress', defaultValue: '') as String;
+      _lockPin = box.get('lockPin', defaultValue: '') as String;
     } catch (_) {}
   }
+
+  Future<void> setLockPin(String pin) async {
+    _lockPin = pin;
+    await Hive.box('settings').put('lockPin', pin);
+    notifyListeners();
+  }
+
+  Future<void> removeLockPin() async {
+    _lockPin = '';
+    await Hive.box('settings').delete('lockPin');
+    notifyListeners();
+  }
+
+  bool verifyLockPin(String pin) => _lockPin == pin;
 
   Future<void> setThemeMode(ThemeMode mode) async {
     _themeMode = mode;

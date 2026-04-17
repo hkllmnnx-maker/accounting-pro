@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/app_provider.dart';
 import 'screens/home_screen.dart';
+import 'screens/lock_screen.dart';
 import 'services/database_service.dart';
 
 void main() async {
@@ -29,7 +30,7 @@ class AccountingApp extends StatelessWidget {
           darkTheme: _buildDarkTheme(),
           themeMode: provider.themeMode,
           locale: const Locale('ar'),
-          home: const HomeScreen(),
+          home: provider.isLockEnabled ? const LockScreen() : const HomeScreen(),
         );
       },
     );
