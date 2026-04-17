@@ -184,6 +184,45 @@ class DatabaseService {
     return entries;
   }
 
+  // ============= DATE-FILTERED STATS =============
+  Map<String, dynamic> getFilteredStats(DateTime from, DateTime to) {
+    final sales = getSales().where((s) =>
+        !s.date.isBefore(DateTime(from.year, from.month, from.day)) &&
+        !s.date.isAfter(DateTime(to.year, to.month, to.day, 23, 59, 59)));
+    final purchases = getPurchases().where((p) =>
+        !p.date.isBefore(DateTime(from.year, from.month, from.day)) &&
+        !p.date.isAfter(DateTime(to.year, to.month, to.day, 23, 59, 59)));
+    final expenses = getExpenses().where((e) =>
+        !e.date.isBefore(DateTime(from.year, from.month, from.day)) &&
+        !e.date.isAfter(DateTime(to.year, to.month, to.day, 23, 59, 59)));
+
+    final totalSales = sales.fold(0.0, (s, i) => s + i.totalAmount);
+    final totalPurchases = purchases.fold(0.0, (s, i) => s + i.totalAmount);
+    final totalExpenses = expenses.fold(0.0, (s, e) => s + e.amount);
+
+    return {
+      'salesCount': sales.length,
+      'purchasesCount': purchases.length,
+      'expensesCount': expenses.length,
+      'totalSales': totalSales,
+      'totalPurchases': totalPurchases,
+      'totalExpenses': totalExpenses,
+      'grossProfit': totalSales - totalPurchases,
+      'netProfit': totalSales - totalPurchases - totalExpenses,
+    };
+  }
+
+  List<Map<String, dynamic>> getFilteredExpensesByCategory(DateTime from, DateTime to) {
+    final expenses = getExpenses().where((e) =>
+        !e.date.isBefore(DateTime(from.year, from.month, from.day)) &&
+        !e.date.isAfter(DateTime(to.year, to.month, to.day, 23, 59, 59)));
+    final Map<String, double> catMap = {};
+    for (var e in expenses) {
+      catMap[e.category] = (catMap[e.category] ?? 0) + e.amount;
+    }
+    return catMap.entries.map((e) => {'category': e.key, 'amount': e.value}).toList();
+  }
+
   // ============= DASHBOARD STATS =============
   Map<String, dynamic> getDashboardStats() {
     final today = DateTime.now();

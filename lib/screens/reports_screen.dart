@@ -13,10 +13,72 @@ class ReportsScreen extends StatefulWidget {
 class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabC;
 
+  // Date filter
+  String _preset = 'month'; // today, week, month, year, all, custom
+  late DateTime _fromDate;
+  late DateTime _toDate;
+
   @override
-  void initState() { super.initState(); _tabC = TabController(length: 4, vsync: this); }
+  void initState() {
+    super.initState();
+    _tabC = TabController(length: 4, vsync: this);
+    _applyPreset('month');
+  }
+
   @override
-  void dispose() { _tabC.dispose(); super.dispose(); }
+  void dispose() {
+    _tabC.dispose();
+    super.dispose();
+  }
+
+  void _applyPreset(String preset) {
+    final now = DateTime.now();
+    setState(() {
+      _preset = preset;
+      switch (preset) {
+        case 'today':
+          _fromDate = DateTime(now.year, now.month, now.day);
+          _toDate = now;
+          break;
+        case 'week':
+          _fromDate = now.subtract(const Duration(days: 7));
+          _toDate = now;
+          break;
+        case 'month':
+          _fromDate = DateTime(now.year, now.month, 1);
+          _toDate = now;
+          break;
+        case 'year':
+          _fromDate = DateTime(now.year, 1, 1);
+          _toDate = now;
+          break;
+        case 'all':
+          _fromDate = DateTime(2000, 1, 1);
+          _toDate = now;
+          break;
+        case 'custom':
+          // keep existing dates
+          break;
+      }
+    });
+  }
+
+  Future<void> _pickCustomRange() async {
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+      initialDateRange: DateTimeRange(start: _fromDate, end: _toDate),
+      locale: const Locale('ar'),
+    );
+    if (picked != null) {
+      setState(() {
+        _preset = 'custom';
+        _fromDate = picked.start;
+        _toDate = picked.end;
+      });
+    }
+  }
 
   final _months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
     'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
@@ -25,26 +87,39 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
-        final stats = provider.dashboardStats;
+        final filteredStats = provider.getFilteredStats(_fromDate, _toDate);
+        final overallStats = provider.dashboardStats;
         return Directionality(
           textDirection: TextDirection.rtl,
           child: Scaffold(
             appBar: AppBar(
               title: const Text('التقارير والإحصاءات'),
-              backgroundColor: Colors.cyan.shade700, foregroundColor: Colors.white,
-              bottom: TabBar(controller: _tabC, isScrollable: true,
-                indicatorColor: Colors.white, labelColor: Colors.white,
+              backgroundColor: Colors.cyan.shade700,
+              foregroundColor: Colors.white,
+              bottom: TabBar(
+                controller: _tabC,
+                isScrollable: true,
+                indicatorColor: Colors.white,
+                labelColor: Colors.white,
                 unselectedLabelColor: Colors.white70,
                 tabs: const [
-                  Tab(text: 'نظرة عامة'), Tab(text: 'المبيعات والمشتريات'),
-                  Tab(text: 'المصاريف'), Tab(text: 'الأرباح'),
-                ]),
+                  Tab(text: 'نظرة عامة'),
+                  Tab(text: 'المبيعات والمشتريات'),
+                  Tab(text: 'المصاريف'),
+                  Tab(text: 'الأرباح'),
+                ],
+              ),
             ),
-            body: TabBarView(controller: _tabC, children: [
-              _buildOverview(stats),
-              _buildSalesPurchases(provider),
-              _buildExpensesChart(provider),
-              _buildProfitReport(provider, stats),
+            body: Column(children: [
+              _buildDateFilterBar(),
+              Expanded(
+                child: TabBarView(controller: _tabC, children: [
+                  _buildOverview(filteredStats, overallStats),
+                  _buildSalesPurchases(provider),
+                  _buildExpensesChart(provider),
+                  _buildProfitReport(provider, filteredStats),
+                ]),
+              ),
             ]),
           ),
         );
@@ -52,33 +127,121 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildOverview(Map<String, dynamic> stats) {
+  Widget _buildDateFilterBar() {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      color: Colors.cyan.withValues(alpha: 0.05),
+      child: Column(
+        children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(children: [
+              _presetChip('today', 'اليوم'),
+              const SizedBox(width: 6),
+              _presetChip('week', 'أسبوع'),
+              const SizedBox(width: 6),
+              _presetChip('month', 'شهر'),
+              const SizedBox(width: 6),
+              _presetChip('year', 'سنة'),
+              const SizedBox(width: 6),
+              _presetChip('all', 'الكل'),
+              const SizedBox(width: 6),
+              ActionChip(
+                avatar: const Icon(Icons.calendar_today, size: 14),
+                label: const Text('مخصص', style: TextStyle(fontSize: 12)),
+                onPressed: _pickCustomRange,
+                backgroundColor: _preset == 'custom'
+                    ? Colors.cyan.withValues(alpha: 0.3)
+                    : null,
+              ),
+            ]),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'من ${formatDate(_fromDate)} إلى ${formatDate(_toDate)}',
+            style: const TextStyle(fontSize: 11, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _presetChip(String value, String label) {
+    final selected = _preset == value;
+    return ChoiceChip(
+      label: Text(label, style: const TextStyle(fontSize: 12)),
+      selected: selected,
+      onSelected: (_) => _applyPreset(value),
+      selectedColor: Colors.cyan.withValues(alpha: 0.3),
+      labelStyle: TextStyle(
+          color: selected ? Colors.cyan.shade900 : null,
+          fontWeight: selected ? FontWeight.bold : null),
+    );
+  }
+
+  Widget _buildOverview(Map<String, dynamic> filteredStats, Map<String, dynamic> overallStats) {
+    final netProfit = (filteredStats['netProfit'] ?? 0.0) as double;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: Column(children: [
-        // KPI Cards
+        Card(
+          color: netProfit >= 0 ? Colors.green.withValues(alpha: 0.05) : Colors.red.withValues(alpha: 0.05),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(children: [
+              const Text('خلال الفترة المحددة', style: TextStyle(fontSize: 12, color: Colors.grey)),
+              const SizedBox(height: 4),
+              Text('صافي الربح: ${formatCurrency(netProfit)}',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: netProfit >= 0 ? Colors.green : Colors.red)),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // KPI Cards for filtered period
         GridView.count(
-          crossAxisCount: 2, shrinkWrap: true,
+          crossAxisCount: 2,
+          shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: 1.5, crossAxisSpacing: 8, mainAxisSpacing: 8,
+          childAspectRatio: 1.5,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
           children: [
-            _kpiCard('إجمالي المبيعات', formatCurrency(stats['totalSales'] ?? 0),
-              Icons.trending_up, Colors.green),
-            _kpiCard('إجمالي المشتريات', formatCurrency(stats['totalPurchases'] ?? 0),
-              Icons.trending_down, Colors.orange),
-            _kpiCard('إجمالي المصاريف', formatCurrency(stats['totalExpenses'] ?? 0),
-              Icons.money_off, Colors.red),
-            _kpiCard('صافي الربح', formatCurrency(
-              (stats['totalSales'] ?? 0) - (stats['totalPurchases'] ?? 0) - (stats['totalExpenses'] ?? 0)),
-              Icons.account_balance_wallet, Colors.blue),
-            _kpiCard('عدد العملاء', '${stats['clientsCount'] ?? 0}',
-              Icons.people, Colors.purple),
-            _kpiCard('عدد المنتجات', '${stats['productsCount'] ?? 0}',
-              Icons.inventory_2, Colors.teal),
-            _kpiCard('ذمم العملاء', formatCurrency(stats['clientsBalance'] ?? 0),
-              Icons.account_balance, Colors.indigo),
-            _kpiCard('ذمم الموردين', formatCurrency(stats['suppliersBalance'] ?? 0),
-              Icons.local_shipping, Colors.brown),
+            _kpiCard('المبيعات (الفترة)', formatCurrency(filteredStats['totalSales'] ?? 0),
+                Icons.trending_up, Colors.green),
+            _kpiCard('المشتريات (الفترة)', formatCurrency(filteredStats['totalPurchases'] ?? 0),
+                Icons.trending_down, Colors.orange),
+            _kpiCard('المصاريف (الفترة)', formatCurrency(filteredStats['totalExpenses'] ?? 0),
+                Icons.money_off, Colors.red),
+            _kpiCard('مجمل الربح', formatCurrency(filteredStats['grossProfit'] ?? 0),
+                Icons.account_balance_wallet, Colors.blue),
+          ],
+        ),
+        const SizedBox(height: 16),
+        const Divider(),
+        const Padding(
+          padding: EdgeInsets.all(8),
+          child: Text('إحصاءات عامة',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        ),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          childAspectRatio: 1.5,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+          children: [
+            _kpiCard('عدد العملاء', '${overallStats['clientsCount'] ?? 0}',
+                Icons.people, Colors.purple),
+            _kpiCard('عدد المنتجات', '${overallStats['productsCount'] ?? 0}',
+                Icons.inventory_2, Colors.teal),
+            _kpiCard('ذمم العملاء', formatCurrency(overallStats['clientsBalance'] ?? 0),
+                Icons.account_balance, Colors.indigo),
+            _kpiCard('ذمم الموردين', formatCurrency(overallStats['suppliersBalance'] ?? 0),
+                Icons.local_shipping, Colors.brown),
           ],
         ),
       ]),
@@ -108,8 +271,8 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: Column(children: [
-        const Text('المبيعات والمشتريات الشهرية',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const Text('المبيعات والمشتريات الشهرية (آخر 6 أشهر)',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
         SizedBox(
           height: 250,
@@ -188,15 +351,15 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   }
 
   Widget _buildExpensesChart(AppProvider provider) {
-    final data = provider.expensesByCategory;
+    final data = provider.getFilteredExpensesByCategory(_fromDate, _toDate);
     final total = data.fold(0.0, (s, d) => s + (d['amount'] as double));
     final colors = [Colors.purple, Colors.blue, Colors.orange, Colors.teal, Colors.indigo, Colors.red, Colors.grey];
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: Column(children: [
-        const Text('المصاريف حسب التصنيف',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        const Text('المصاريف حسب التصنيف (خلال الفترة)',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
         SizedBox(
           height: 220,
@@ -246,10 +409,10 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     );
   }
 
-  Widget _buildProfitReport(AppProvider provider, Map<String, dynamic> stats) {
-    final totalSales = (stats['totalSales'] ?? 0.0) as double;
-    final totalPurchases = (stats['totalPurchases'] ?? 0.0) as double;
-    final totalExpenses = (stats['totalExpenses'] ?? 0.0) as double;
+  Widget _buildProfitReport(AppProvider provider, Map<String, dynamic> filteredStats) {
+    final totalSales = (filteredStats['totalSales'] ?? 0.0) as double;
+    final totalPurchases = (filteredStats['totalPurchases'] ?? 0.0) as double;
+    final totalExpenses = (filteredStats['totalExpenses'] ?? 0.0) as double;
     final grossProfit = totalSales - totalPurchases;
     final netProfit = grossProfit - totalExpenses;
     final monthlyData = provider.monthlySalesData;
@@ -306,6 +469,9 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(children: [
+              Text('الفترة: ${formatDate(_fromDate)} - ${formatDate(_toDate)}',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              const Divider(),
               _plRow('إجمالي المبيعات', totalSales, Colors.green),
               _plRow('إجمالي المشتريات', -totalPurchases, Colors.orange),
               const Divider(),

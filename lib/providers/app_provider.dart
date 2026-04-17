@@ -126,6 +126,12 @@ class AppProvider extends ChangeNotifier {
   // Dashboard
   Map<String, dynamic> get dashboardStats => _db.getDashboardStats();
 
+  // Filtered stats
+  Map<String, dynamic> getFilteredStats(DateTime from, DateTime to) =>
+      _db.getFilteredStats(from, to);
+  List<Map<String, dynamic>> getFilteredExpensesByCategory(DateTime from, DateTime to) =>
+      _db.getFilteredExpensesByCategory(from, to);
+
   // Charts
   List<Map<String, dynamic>> get monthlySalesData => _db.getMonthlySalesData();
   List<Map<String, dynamic>> get expensesByCategory => _db.getExpensesByCategory();
