@@ -250,54 +250,261 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
 
   void _selectContact(BuildContext context, AppProvider provider) {
     final contacts = isSale ? provider.clients : provider.suppliers;
-    showModalBottomSheet(context: context,
-      builder: (_) => Directionality(textDirection: TextDirection.rtl,
-        child: Column(children: [
-          Padding(padding: const EdgeInsets.all(12),
-            child: Text('اختر ${isSale ? "عميل" : "مورد"}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
-          Expanded(child: ListView.builder(
-            itemCount: contacts.length,
-            itemBuilder: (_, i) {
-              final c = contacts[i];
-              final name = isSale ? (c as Client).name : (c as Supplier).name;
-              final id = isSale ? (c as Client).id : (c as Supplier).id;
-              return ListTile(
-                title: Text(name),
-                onTap: () {
-                  setState(() { _contactId = id; _contactName = name; });
-                  Navigator.pop(context);
-                },
-              );
-            },
-          )),
-        ])));
+    String searchQuery = '';
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final filtered = contacts.where((c) {
+            final name = isSale ? (c as Client).name : (c as Supplier).name;
+            return name.toLowerCase().contains(searchQuery.toLowerCase());
+          }).toList();
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: SizedBox(
+              height: MediaQuery.of(ctx).size.height * 0.7,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(children: [
+                      Expanded(
+                        child: Text(
+                          'اختر ${isSale ? "عميل" : "مورد"}',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      TextButton.icon(
+                        icon: const Icon(Icons.add, size: 18),
+                        label: Text('جديد'),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _addNewContact(context, provider);
+                        },
+                      ),
+                    ]),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'بحث...',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        isDense: true,
+                      ),
+                      onChanged: (v) => setModalState(() => searchQuery = v),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.person_off, size: 48, color: Colors.grey),
+                                const SizedBox(height: 8),
+                                Text(searchQuery.isEmpty
+                                    ? 'لا يوجد ${isSale ? "عملاء" : "موردين"}'
+                                    : 'لا توجد نتائج'),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: filtered.length,
+                            itemBuilder: (_, i) {
+                              final c = filtered[i];
+                              final name = isSale ? (c as Client).name : (c as Supplier).name;
+                              final id = isSale ? (c as Client).id : (c as Supplier).id;
+                              final phone = isSale ? (c as Client).phone : (c as Supplier).phone;
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: isSale
+                                      ? Colors.blue.shade100
+                                      : Colors.orange.shade100,
+                                  child: Text(
+                                    name.isNotEmpty ? name[0] : '?',
+                                    style: TextStyle(
+                                      color: isSale ? Colors.blue.shade700 : Colors.orange.shade700,
+                                    ),
+                                  ),
+                                ),
+                                title: Text(name),
+                                subtitle: phone.isNotEmpty ? Text(phone) : null,
+                                onTap: () {
+                                  setState(() {
+                                    _contactId = id;
+                                    _contactName = name;
+                                  });
+                                  Navigator.pop(ctx);
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _addNewContact(BuildContext context, AppProvider provider) {
+    final nameC = TextEditingController();
+    final phoneC = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text('إضافة ${isSale ? "عميل" : "مورد"} سريع'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppTextField(label: 'الاسم *', controller: nameC),
+              AppTextField(label: 'الهاتف', controller: phoneC, keyboardType: TextInputType.phone),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+            ElevatedButton(
+              onPressed: () {
+                if (nameC.text.trim().isEmpty) return;
+                final id = provider.generateId();
+                if (isSale) {
+                  provider.saveClient(Client(id: id, name: nameC.text.trim(), phone: phoneC.text.trim()));
+                } else {
+                  provider.saveSupplier(Supplier(id: id, name: nameC.text.trim(), phone: phoneC.text.trim()));
+                }
+                setState(() {
+                  _contactId = id;
+                  _contactName = nameC.text.trim();
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('حفظ واختيار'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _addItem(BuildContext context, AppProvider provider) {
     final products = provider.products;
-    showModalBottomSheet(context: context,
-      builder: (_) => Directionality(textDirection: TextDirection.rtl,
-        child: Column(children: [
-          const Padding(padding: EdgeInsets.all(12),
-            child: Text('اختر منتج', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
-          Expanded(child: ListView.builder(
-            itemCount: products.length,
-            itemBuilder: (_, i) {
-              final p = products[i];
-              return ListTile(
-                title: Text(p.name),
-                subtitle: Text('سعر: ${formatCurrency(isSale ? p.sellPrice : p.buyPrice)} | مخزون: ${p.quantity}'),
-                trailing: const Icon(Icons.add_circle_outline, color: Colors.green),
-                onTap: () {
-                  setState(() => _items.add(InvoiceItem(
-                    productId: p.id, productName: p.name, quantity: 1,
-                    price: isSale ? p.sellPrice : p.buyPrice)));
-                  Navigator.pop(context);
-                },
-              );
-            },
-          )),
-        ])));
+    String searchQuery = '';
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final filtered = products.where((p) {
+            final q = searchQuery.toLowerCase();
+            return p.name.toLowerCase().contains(q) ||
+                p.category.toLowerCase().contains(q) ||
+                p.barcode.toLowerCase().contains(q);
+          }).toList();
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: SizedBox(
+              height: MediaQuery.of(ctx).size.height * 0.7,
+              child: Column(
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text('اختر منتج',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'بحث بالاسم أو الفئة أو الباركود...',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        isDense: true,
+                      ),
+                      onChanged: (v) => setModalState(() => searchQuery = v),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey),
+                                SizedBox(height: 8),
+                                Text('لا توجد منتجات'),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: filtered.length,
+                            itemBuilder: (_, i) {
+                              final p = filtered[i];
+                              final outOfStock = isSale && p.quantity <= 0;
+                              final lowStock = isSale && p.quantity > 0 && p.quantity < 5;
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: outOfStock
+                                      ? Colors.red.shade100
+                                      : lowStock
+                                          ? Colors.orange.shade100
+                                          : Colors.teal.shade100,
+                                  child: Icon(
+                                    Icons.inventory_2,
+                                    color: outOfStock
+                                        ? Colors.red
+                                        : lowStock
+                                            ? Colors.orange
+                                            : Colors.teal,
+                                  ),
+                                ),
+                                title: Text(p.name),
+                                subtitle: Row(
+                                  children: [
+                                    Text('سعر: ${formatCurrency(isSale ? p.sellPrice : p.buyPrice)}'),
+                                    const Text(' | '),
+                                    Text(
+                                      'مخزون: ${p.quantity}',
+                                      style: TextStyle(
+                                        color: outOfStock
+                                            ? Colors.red
+                                            : lowStock
+                                                ? Colors.orange
+                                                : null,
+                                        fontWeight: outOfStock || lowStock ? FontWeight.bold : null,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                trailing: const Icon(Icons.add_circle_outline, color: Colors.green),
+                                onTap: () {
+                                  setState(() => _items.add(InvoiceItem(
+                                        productId: p.id,
+                                        productName: p.name,
+                                        quantity: 1,
+                                        price: isSale ? p.sellPrice : p.buyPrice,
+                                      )));
+                                  Navigator.pop(ctx);
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   void _save(AppProvider provider) {
