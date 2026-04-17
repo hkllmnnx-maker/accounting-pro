@@ -16,6 +16,7 @@ import 'reports_screen.dart';
 import 'exchange_screen.dart';
 import 'journal_screen.dart';
 import 'quotes_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -37,9 +38,19 @@ class HomeScreen extends StatelessWidget {
               foregroundColor: Colors.white,
               actions: [
                 IconButton(
+                  icon: Icon(provider.themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode),
+                  tooltip: 'تبديل الوضع',
+                  onPressed: () => provider.toggleTheme(),
+                ),
+                IconButton(
                   icon: const Icon(Icons.bar_chart_rounded),
                   tooltip: 'التقارير',
                   onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportsScreen())),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.settings),
+                  tooltip: 'الإعدادات',
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
                 ),
               ],
             ),

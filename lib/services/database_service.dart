@@ -354,4 +354,59 @@ class DatabaseService {
   }
 
   String generateId() => DateTime.now().millisecondsSinceEpoch.toString();
+
+  // ============= BACKUP & RESTORE =============
+  Future<Map<String, dynamic>> exportAllData() async {
+    return {
+      'version': '2.0',
+      'exportDate': DateTime.now().toIso8601String(),
+      'clients': _clientsBox.values.map((e) => Map<String, dynamic>.from(e)).toList(),
+      'suppliers': _suppliersBox.values.map((e) => Map<String, dynamic>.from(e)).toList(),
+      'employees': _employeesBox.values.map((e) => Map<String, dynamic>.from(e)).toList(),
+      'products': _productsBox.values.map((e) => Map<String, dynamic>.from(e)).toList(),
+      'sales': _salesBox.values.map((e) => Map<String, dynamic>.from(e)).toList(),
+      'purchases': _purchasesBox.values.map((e) => Map<String, dynamic>.from(e)).toList(),
+      'expenses': _expensesBox.values.map((e) => Map<String, dynamic>.from(e)).toList(),
+      'vouchers': _vouchersBox.values.map((e) => Map<String, dynamic>.from(e)).toList(),
+      'exchanges': _exchangesBox.values.map((e) => Map<String, dynamic>.from(e)).toList(),
+      'journal': _journalBox.values.map((e) => Map<String, dynamic>.from(e)).toList(),
+      'quotes': _quotesBox.values.map((e) => Map<String, dynamic>.from(e)).toList(),
+    };
+  }
+
+  Future<void> importAllData(Map<String, dynamic> data) async {
+    Future<void> restore(Box box, String key) async {
+      await box.clear();
+      final items = (data[key] as List?) ?? [];
+      for (var item in items) {
+        final map = Map<String, dynamic>.from(item as Map);
+        await box.put(map['id'], map);
+      }
+    }
+    await restore(_clientsBox, 'clients');
+    await restore(_suppliersBox, 'suppliers');
+    await restore(_employeesBox, 'employees');
+    await restore(_productsBox, 'products');
+    await restore(_salesBox, 'sales');
+    await restore(_purchasesBox, 'purchases');
+    await restore(_expensesBox, 'expenses');
+    await restore(_vouchersBox, 'vouchers');
+    await restore(_exchangesBox, 'exchanges');
+    await restore(_journalBox, 'journal');
+    await restore(_quotesBox, 'quotes');
+  }
+
+  Future<void> clearAllData() async {
+    await _clientsBox.clear();
+    await _suppliersBox.clear();
+    await _employeesBox.clear();
+    await _productsBox.clear();
+    await _salesBox.clear();
+    await _purchasesBox.clear();
+    await _expensesBox.clear();
+    await _vouchersBox.clear();
+    await _exchangesBox.clear();
+    await _journalBox.clear();
+    await _quotesBox.clear();
+  }
 }

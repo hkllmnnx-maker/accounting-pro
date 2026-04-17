@@ -1,9 +1,67 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../services/database_service.dart';
 import '../models/models.dart';
 
 class AppProvider extends ChangeNotifier {
   final DatabaseService _db = DatabaseService();
+
+  AppProvider() {
+    _loadSettings();
+  }
+
+  // ============= THEME & SETTINGS =============
+  ThemeMode _themeMode = ThemeMode.light;
+  ThemeMode get themeMode => _themeMode;
+
+  String _currency = 'ر.س';
+  String get currency => _currency;
+
+  String _companyName = 'شركتي';
+  String get companyName => _companyName;
+
+  String _companyPhone = '';
+  String get companyPhone => _companyPhone;
+
+  String _companyAddress = '';
+  String get companyAddress => _companyAddress;
+
+  void _loadSettings() {
+    try {
+      final box = Hive.box('settings');
+      final themeIndex = box.get('themeMode', defaultValue: 0) as int;
+      _themeMode = ThemeMode.values[themeIndex];
+      _currency = box.get('currency', defaultValue: 'ر.س') as String;
+      _companyName = box.get('companyName', defaultValue: 'شركتي') as String;
+      _companyPhone = box.get('companyPhone', defaultValue: '') as String;
+      _companyAddress = box.get('companyAddress', defaultValue: '') as String;
+    } catch (_) {}
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    _themeMode = mode;
+    await Hive.box('settings').put('themeMode', mode.index);
+    notifyListeners();
+  }
+
+  Future<void> toggleTheme() async {
+    final newMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    await setThemeMode(newMode);
+  }
+
+  Future<void> setCurrency(String c) async {
+    _currency = c;
+    await Hive.box('settings').put('currency', c);
+    notifyListeners();
+  }
+
+  Future<void> updateCompanyInfo({String? name, String? phone, String? address}) async {
+    final box = Hive.box('settings');
+    if (name != null) { _companyName = name; await box.put('companyName', name); }
+    if (phone != null) { _companyPhone = phone; await box.put('companyPhone', phone); }
+    if (address != null) { _companyAddress = address; await box.put('companyAddress', address); }
+    notifyListeners();
+  }
 
   void refresh() => notifyListeners();
 
@@ -71,6 +129,17 @@ class AppProvider extends ChangeNotifier {
   // Charts
   List<Map<String, dynamic>> get monthlySalesData => _db.getMonthlySalesData();
   List<Map<String, dynamic>> get expensesByCategory => _db.getExpensesByCategory();
+
+  // Backup & Restore
+  Future<Map<String, dynamic>> exportAllData() => _db.exportAllData();
+  Future<void> importAllData(Map<String, dynamic> data) async {
+    await _db.importAllData(data);
+    notifyListeners();
+  }
+  Future<void> clearAllData() async {
+    await _db.clearAllData();
+    notifyListeners();
+  }
 
   String generateId() => _db.generateId();
 }
