@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../models/models.dart';
+import '../services/pdf_service.dart';
 import '../widgets/common_widgets.dart';
 
 class AccountStatementScreen extends StatefulWidget {
@@ -35,8 +36,25 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
         return Directionality(
           textDirection: TextDirection.rtl,
           child: Scaffold(
-            appBar: AppBar(title: const Text('كشف حساب'),
-              backgroundColor: Colors.brown, foregroundColor: Colors.white),
+            appBar: AppBar(
+              title: const Text('كشف حساب'),
+              backgroundColor: Colors.brown,
+              foregroundColor: Colors.white,
+              actions: [
+                if (_selectedId != null && entries.isNotEmpty) ...[
+                  IconButton(
+                    icon: const Icon(Icons.picture_as_pdf),
+                    tooltip: 'طباعة PDF',
+                    onPressed: () => _printPdf(provider, entries),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.share),
+                    tooltip: 'مشاركة PDF',
+                    onPressed: () => _sharePdf(provider, entries),
+                  ),
+                ],
+              ],
+            ),
             body: Column(children: [
               // Contact selector
               Padding(
@@ -132,6 +150,42 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
             color: entry.balance >= 0 ? Colors.red : Colors.green))),
       ]),
     );
+  }
+
+  Future<void> _printPdf(AppProvider provider, List<AccountEntry> entries) async {
+    try {
+      final doc = await PdfService.generateAccountStatementPdf(
+        companyName: provider.companyName,
+        contactName: _selectedName,
+        currency: provider.currency,
+        entries: entries,
+      );
+      await PdfService.printInvoice(doc, 'Statement-$_selectedName');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ في الطباعة: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _sharePdf(AppProvider provider, List<AccountEntry> entries) async {
+    try {
+      final doc = await PdfService.generateAccountStatementPdf(
+        companyName: provider.companyName,
+        contactName: _selectedName,
+        currency: provider.currency,
+        entries: entries,
+      );
+      await PdfService.shareInvoice(doc, 'Statement-$_selectedName');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ في المشاركة: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   void _selectContact(BuildContext context, AppProvider provider) {

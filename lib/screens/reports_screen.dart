@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../providers/app_provider.dart';
+import '../services/pdf_service.dart';
 import '../widgets/common_widgets.dart';
 
 class ReportsScreen extends StatefulWidget {
@@ -96,6 +97,18 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
               title: const Text('التقارير والإحصاءات'),
               backgroundColor: Colors.cyan.shade700,
               foregroundColor: Colors.white,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.picture_as_pdf),
+                  tooltip: 'تصدير PDF',
+                  onPressed: () => _exportPdf(provider, filteredStats),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.share),
+                  tooltip: 'مشاركة PDF',
+                  onPressed: () => _sharePdf(provider, filteredStats),
+                ),
+              ],
               bottom: TabBar(
                 controller: _tabC,
                 isScrollable: true,
@@ -518,5 +531,47 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
     if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
     if (value >= 1000) return '${(value / 1000).toStringAsFixed(0)}K';
     return value.toStringAsFixed(0);
+  }
+
+  Future<void> _exportPdf(AppProvider provider, Map<String, dynamic> stats) async {
+    try {
+      final expensesByCategory = provider.getFilteredExpensesByCategory(_fromDate, _toDate);
+      final doc = await PdfService.generateFinancialReport(
+        companyName: provider.companyName,
+        currency: provider.currency,
+        from: _fromDate,
+        to: _toDate,
+        stats: stats,
+        expensesByCategory: expensesByCategory,
+      );
+      await PdfService.printInvoice(doc, 'Financial-Report');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ في التصدير: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _sharePdf(AppProvider provider, Map<String, dynamic> stats) async {
+    try {
+      final expensesByCategory = provider.getFilteredExpensesByCategory(_fromDate, _toDate);
+      final doc = await PdfService.generateFinancialReport(
+        companyName: provider.companyName,
+        currency: provider.currency,
+        from: _fromDate,
+        to: _toDate,
+        stats: stats,
+        expensesByCategory: expensesByCategory,
+      );
+      await PdfService.shareInvoice(doc, 'Financial-Report');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ في المشاركة: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 }
