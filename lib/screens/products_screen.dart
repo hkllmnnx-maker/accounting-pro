@@ -12,21 +12,39 @@ class ProductsScreen extends StatefulWidget {
 
 class _ProductsScreenState extends State<ProductsScreen> {
   String _search = '';
+  String _filter = 'all'; // all, low, out
 
   @override
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
-        final products = provider.products
-            .where((p) => p.name.contains(_search) || p.category.contains(_search) || p.barcode.contains(_search)).toList();
+        final allProducts = provider.products;
+        final lowStockCount = allProducts.where((p) => p.quantity > 0 && p.quantity < 5).length;
+        final outOfStockCount = allProducts.where((p) => p.quantity <= 0).length;
+
+        final products = allProducts.where((p) {
+          final matchSearch = p.name.contains(_search) ||
+              p.category.contains(_search) ||
+              p.barcode.contains(_search);
+          if (!matchSearch) return false;
+          if (_filter == 'low' && !(p.quantity > 0 && p.quantity < 5)) return false;
+          if (_filter == 'out' && p.quantity > 0) return false;
+          return true;
+        }).toList();
+
         return Directionality(
           textDirection: TextDirection.rtl,
           child: Scaffold(
-            appBar: AppBar(title: const Text('المنتجات والمخزون'),
-              backgroundColor: Theme.of(context).colorScheme.primary, foregroundColor: Colors.white),
+            appBar: AppBar(
+              title: const Text('المنتجات والمخزون'),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+            ),
             floatingActionButton: FloatingActionButton.extended(
               onPressed: () => _showForm(context, provider),
-              icon: const Icon(Icons.add), label: const Text('إضافة منتج')),
+              icon: const Icon(Icons.add),
+              label: const Text('إضافة منتج'),
+            ),
             body: Column(children: [
               SearchField(hint: 'بحث عن منتج...', onChanged: (v) => setState(() => _search = v)),
               // Summary row
@@ -34,14 +52,53 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 color: Colors.teal.withValues(alpha: 0.05),
                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-                  _statChip('المنتجات', '${products.length}', Colors.teal),
-                  _statChip('إجمالي المخزون', '${products.fold(0, (s, p) => s + p.quantity)}', Colors.blue),
-                  _statChip('قيمة المخزون', formatCurrency(products.fold(0.0, (s, p) => s + (p.sellPrice * p.quantity))), Colors.green),
+                  _statChip('المنتجات', '${allProducts.length}', Colors.teal),
+                  _statChip('إجمالي المخزون',
+                      '${allProducts.fold(0, (s, p) => s + p.quantity)}', Colors.blue),
+                  _statChip(
+                      'قيمة المخزون',
+                      formatCurrency(
+                          allProducts.fold(0.0, (s, p) => s + (p.sellPrice * p.quantity))),
+                      Colors.green),
                 ]),
               ),
+              if (lowStockCount > 0 || outOfStockCount > 0)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(children: [
+                    const Icon(Icons.warning_amber, color: Colors.orange, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'تنبيه: $lowStockCount منتج مخزون منخفض، $outOfStockCount منتج نافد',
+                        style: const TextStyle(fontSize: 12, color: Colors.orange),
+                      ),
+                    ),
+                  ]),
+                ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(children: [
+                  _filterChip('all', 'الكل', Colors.blue),
+                  const SizedBox(width: 8),
+                  _filterChip('low', 'مخزون منخفض', Colors.orange),
+                  const SizedBox(width: 8),
+                  _filterChip('out', 'نافد', Colors.red),
+                ]),
+              ),
+              const SizedBox(height: 8),
               Expanded(
                 child: products.isEmpty
-                    ? const EmptyState(message: 'لا يوجد منتجات', icon: Icons.inventory_2)
+                    ? EmptyState(
+                        message: allProducts.isEmpty ? 'لا يوجد منتجات' : 'لا توجد نتائج',
+                        icon: Icons.inventory_2)
                     : ListView.builder(
                         itemCount: products.length,
                         itemBuilder: (_, i) => _buildCard(context, products[i], provider)),
@@ -53,6 +110,19 @@ class _ProductsScreenState extends State<ProductsScreen> {
     );
   }
 
+  Widget _filterChip(String value, String label, Color color) {
+    final selected = _filter == value;
+    return ChoiceChip(
+      label: Text(label, style: const TextStyle(fontSize: 12)),
+      selected: selected,
+      onSelected: (_) => setState(() => _filter = value),
+      selectedColor: color.withValues(alpha: 0.3),
+      labelStyle: TextStyle(
+          color: selected ? color : null,
+          fontWeight: selected ? FontWeight.bold : null),
+    );
+  }
+
   Widget _statChip(String label, String value, Color color) {
     return Column(children: [
       Text(value, style: TextStyle(fontWeight: FontWeight.bold, color: color, fontSize: 14)),
@@ -61,18 +131,21 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   Widget _buildCard(BuildContext context, Product product, AppProvider provider) {
-    final isLow = product.quantity < 5;
+    final isOut = product.quantity <= 0;
+    final isLow = product.quantity > 0 && product.quantity < 5;
+    final badgeColor = isOut ? Colors.red : (isLow ? Colors.orange : Colors.teal);
+    final badgeLabel = isOut ? 'نافد' : (isLow ? 'مخزون منخفض' : '');
     return Card(
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: isLow ? Colors.red.shade100 : Colors.teal.shade100,
-          child: Icon(Icons.inventory_2, color: isLow ? Colors.red : Colors.teal, size: 20)),
+          backgroundColor: badgeColor.withValues(alpha: 0.15),
+          child: Icon(Icons.inventory_2, color: badgeColor, size: 20)),
         title: Row(children: [
           Expanded(child: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold))),
-          if (isLow) Container(
+          if (badgeLabel.isNotEmpty) Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(color: Colors.red.shade100, borderRadius: BorderRadius.circular(8)),
-            child: const Text('مخزون منخفض', style: TextStyle(fontSize: 9, color: Colors.red))),
+            decoration: BoxDecoration(color: badgeColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+            child: Text(badgeLabel, style: TextStyle(fontSize: 9, color: badgeColor))),
         ]),
         subtitle: Row(children: [
           Text('شراء: ${formatCurrency(product.buyPrice)}', style: const TextStyle(fontSize: 11)),
@@ -83,7 +156,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
         ]),
         trailing: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Text('${product.quantity}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16,
-            color: isLow ? Colors.red : Colors.teal)),
+            color: badgeColor)),
           Text(product.unit.isNotEmpty ? product.unit : 'قطعة', style: const TextStyle(fontSize: 10, color: Colors.grey)),
         ]),
         onTap: () => _showForm(context, provider, product: product),
