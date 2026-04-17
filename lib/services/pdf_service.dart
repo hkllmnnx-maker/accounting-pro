@@ -410,6 +410,130 @@ class PdfService {
     );
   }
 
+  /// توليد تقرير مخزون PDF
+  static Future<pw.Document> generateInventoryReport({
+    required String companyName,
+    required String currency,
+    required List<Product> products,
+  }) async {
+    final doc = pw.Document();
+    final totalValue = products.fold(0.0, (s, p) => s + (p.sellPrice * p.quantity));
+    final totalCost = products.fold(0.0, (s, p) => s + (p.buyPrice * p.quantity));
+    final totalQty = products.fold(0, (s, p) => s + p.quantity);
+    final outOfStock = products.where((p) => p.quantity <= 0).length;
+    final lowStock = products.where((p) => p.quantity > 0 && p.quantity < 5).length;
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        textDirection: pw.TextDirection.rtl,
+        margin: const pw.EdgeInsets.all(32),
+        build: (context) => [
+          pw.Container(
+            padding: const pw.EdgeInsets.all(12),
+            decoration: pw.BoxDecoration(
+              color: PdfColor.fromInt(0xFF00695C),
+              borderRadius: pw.BorderRadius.circular(8),
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(companyName,
+                        style: pw.TextStyle(
+                            color: PdfColors.white,
+                            fontSize: 18,
+                            fontWeight: pw.FontWeight.bold)),
+                    pw.Text('تقرير المخزون',
+                        style: const pw.TextStyle(
+                            color: PdfColors.white, fontSize: 12)),
+                  ],
+                ),
+                pw.Text('تاريخ: ${_formatDate(DateTime.now())}',
+                    style: const pw.TextStyle(
+                        color: PdfColors.white, fontSize: 10)),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 16),
+
+          // Summary
+          pw.Table(
+            border: pw.TableBorder.all(color: PdfColors.grey400),
+            children: [
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                children: [
+                  _cell('البند', bold: true),
+                  _cell('القيمة', bold: true),
+                ],
+              ),
+              _statRow('إجمالي المنتجات', '${products.length}'),
+              _statRow('إجمالي الكمية', '$totalQty'),
+              _statRow('تكلفة المخزون (شراء)', _formatCurrency(totalCost, currency)),
+              _statRow('قيمة المخزون (بيع)', _formatCurrency(totalValue, currency), highlight: true),
+              _statRow('أرباح متوقعة', _formatCurrency(totalValue - totalCost, currency), highlight: true),
+              _statRow('منتجات نافدة', '$outOfStock'),
+              _statRow('منتجات منخفضة', '$lowStock'),
+            ],
+          ),
+          pw.SizedBox(height: 20),
+
+          pw.Text('تفاصيل المنتجات',
+              style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 8),
+          pw.Table(
+            border: pw.TableBorder.all(color: PdfColors.grey400),
+            columnWidths: {
+              0: const pw.FlexColumnWidth(0.5),
+              1: const pw.FlexColumnWidth(2.5),
+              2: const pw.FlexColumnWidth(1.5),
+              3: const pw.FlexColumnWidth(1),
+              4: const pw.FlexColumnWidth(1.2),
+              5: const pw.FlexColumnWidth(1.2),
+            },
+            children: [
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                children: [
+                  _cell('#', bold: true),
+                  _cell('الاسم', bold: true),
+                  _cell('الفئة', bold: true),
+                  _cell('الكمية', bold: true),
+                  _cell('سعر الشراء', bold: true),
+                  _cell('سعر البيع', bold: true),
+                ],
+              ),
+              ...products.asMap().entries.map((entry) {
+                final i = entry.key;
+                final p = entry.value;
+                return pw.TableRow(
+                  decoration: p.quantity <= 0
+                      ? const pw.BoxDecoration(color: PdfColors.red50)
+                      : p.quantity < 5
+                          ? const pw.BoxDecoration(color: PdfColors.amber50)
+                          : null,
+                  children: [
+                    _cell('${i + 1}'),
+                    _cell(p.name),
+                    _cell(p.category),
+                    _cell('${p.quantity}'),
+                    _cell(_formatCurrency(p.buyPrice, currency)),
+                    _cell(_formatCurrency(p.sellPrice, currency)),
+                  ],
+                );
+              }),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    return doc;
+  }
+
   /// توليد كشف حساب عميل/مورد PDF
   static Future<pw.Document> generateAccountStatementPdf({
     required String companyName,

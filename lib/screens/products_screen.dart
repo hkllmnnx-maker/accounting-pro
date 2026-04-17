@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../models/models.dart';
+import '../services/pdf_service.dart';
 import '../widgets/common_widgets.dart';
 
 class ProductsScreen extends StatefulWidget {
@@ -39,6 +40,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
               title: const Text('المنتجات والمخزون'),
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.picture_as_pdf),
+                  tooltip: 'تصدير تقرير PDF',
+                  onPressed: () => _exportInventoryPdf(provider, allProducts),
+                ),
+              ],
             ),
             floatingActionButton: FloatingActionButton.extended(
               onPressed: () => _showForm(context, provider),
@@ -221,5 +229,22 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 },
                 child: Text(product == null ? 'إضافة' : 'حفظ'))),
             ]))))));
+  }
+
+  Future<void> _exportInventoryPdf(AppProvider provider, List<Product> products) async {
+    try {
+      final doc = await PdfService.generateInventoryReport(
+        companyName: provider.companyName,
+        currency: provider.currency,
+        products: products,
+      );
+      await PdfService.printInvoice(doc, 'Inventory-Report');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ في التصدير: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 }

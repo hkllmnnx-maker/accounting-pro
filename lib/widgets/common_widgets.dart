@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import 'package:provider/provider.dart';
+import '../providers/app_provider.dart';
 
 String formatCurrency(double amount) => NumberFormat('#,##0.00', 'en').format(amount);
+
+/// Format currency with currency symbol from AppProvider
+String formatCurrencyWithSymbol(BuildContext context, double amount) {
+  final currency = Provider.of<AppProvider>(context, listen: false).currency;
+  return '${NumberFormat('#,##0.00', 'en').format(amount)} $currency';
+}
+
 String formatDate(DateTime date) => DateFormat('yyyy/MM/dd').format(date);
 String formatDateTime(DateTime date) => DateFormat('yyyy/MM/dd HH:mm').format(date);
 
