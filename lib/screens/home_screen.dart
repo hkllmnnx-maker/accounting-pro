@@ -17,6 +17,7 @@ import 'exchange_screen.dart';
 import 'journal_screen.dart';
 import 'quotes_screen.dart';
 import 'settings_screen.dart';
+import 'global_search_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -37,6 +38,11 @@ class HomeScreen extends StatelessWidget {
               backgroundColor: theme.colorScheme.primary,
               foregroundColor: Colors.white,
               actions: [
+                IconButton(
+                  icon: const Icon(Icons.search),
+                  tooltip: 'البحث الشامل',
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GlobalSearchScreen())),
+                ),
                 IconButton(
                   icon: Icon(provider.themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode),
                   tooltip: 'تبديل الوضع',
