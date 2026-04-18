@@ -2,6 +2,18 @@
 
 تطبيق محاسبي احترافي لإدارة الأعمال والحسابات، مبني بتقنية Flutter ويدعم اللغة العربية بالكامل (RTL).
 
+## 🌐 المعاينة المباشرة (Live Demo)
+
+**🚀 جرّب التطبيق الآن عبر الرابط التالي:**
+
+### 👉 [https://hkllmnnx-maker.github.io/accounting-pro/](https://hkllmnnx-maker.github.io/accounting-pro/)
+
+> يتم نشر التطبيق تلقائياً على GitHub Pages مع كل تحديث. يحتوي التطبيق على بيانات تجريبية جاهزة للاستعراض (عملاء، موردين، منتجات، فواتير، إلخ).
+
+[![Deploy Flutter Web](https://github.com/hkllmnnx-maker/accounting-pro/actions/workflows/deploy.yml/badge.svg)](https://github.com/hkllmnnx-maker/accounting-pro/actions/workflows/deploy.yml)
+
+---
+
 ## نظرة عامة
 
 **Accounting Pro** هو نظام محاسبي متكامل مصمم للشركات الصغيرة والمتوسطة، يوفر جميع الأدوات اللازمة لإدارة الحسابات والمبيعات والمشتريات والمخزون والتقارير المالية.
