@@ -546,6 +546,29 @@ class DatabaseService {
     return list.take(limit).toList();
   }
 
+  /// Returns last 7 days' sales/expenses summary for the home dashboard sparkline.
+  /// Returns a list ordered oldest -> newest.
+  List<Map<String, dynamic>> getLast7DaysActivity() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final List<Map<String, dynamic>> result = [];
+    for (int i = 6; i >= 0; i--) {
+      final day = today.subtract(Duration(days: i));
+      final next = day.add(const Duration(days: 1));
+      final daySales = getSales().where((s) =>
+          !s.date.isBefore(day) && s.date.isBefore(next));
+      final dayExpenses = getExpenses().where((e) =>
+          !e.date.isBefore(day) && e.date.isBefore(next));
+      result.add({
+        'date': day,
+        'sales': daySales.fold<double>(0, (sum, inv) => sum + inv.totalAmount),
+        'expenses': dayExpenses.fold<double>(0, (sum, e) => sum + e.amount),
+        'salesCount': daySales.length,
+      });
+    }
+    return result;
+  }
+
   /// Returns inventory valuation summary: totalProducts, totalQuantity, totalCostValue, totalSellValue, expectedProfit.
   Map<String, dynamic> getInventoryValuation() {
     final products = getProducts();

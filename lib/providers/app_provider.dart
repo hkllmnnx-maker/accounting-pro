@@ -183,6 +183,9 @@ class AppProvider extends ChangeNotifier {
   // Inventory valuation
   Map<String, dynamic> get inventoryValuation => _db.getInventoryValuation();
 
+  // Last 7 days activity sparkline
+  List<Map<String, dynamic>> get last7DaysActivity => _db.getLast7DaysActivity();
+
   // Backup & Restore
   Future<Map<String, dynamic>> exportAllData() => _db.exportAllData();
   Future<void> importAllData(Map<String, dynamic> data) async {

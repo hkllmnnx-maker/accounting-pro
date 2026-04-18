@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import 'package:fl_chart/fl_chart.dart';
 import '../providers/app_provider.dart';
 import 'clients_screen.dart';
 import 'suppliers_screen.dart';
@@ -70,6 +71,9 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     // Daily Summary
                     _buildSummarySection(context, stats, theme),
+                    const SizedBox(height: 12),
+                    // Weekly performance chart
+                    _buildWeeklyChart(context, provider, theme),
                     const SizedBox(height: 16),
                     // Quick Actions
                     Text(' الإجراءات السريعة', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
@@ -303,6 +307,166 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildWeeklyChart(BuildContext context, AppProvider provider, ThemeData theme) {
+    final data = provider.last7DaysActivity;
+    final dayNames = ['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'];
+    final maxSales = data.fold<double>(0, (m, d) => (d['sales'] as double) > m ? d['sales'] as double : m);
+    final maxExpenses = data.fold<double>(0, (m, d) => (d['expenses'] as double) > m ? d['expenses'] as double : m);
+    final maxY = (maxSales > maxExpenses ? maxSales : maxExpenses) * 1.25;
+    final totalSales = data.fold<double>(0, (s, d) => s + (d['sales'] as double));
+    final totalExpenses = data.fold<double>(0, (s, d) => s + (d['expenses'] as double));
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.primary.withValues(alpha: 0.05),
+            blurRadius: 10, offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.show_chart, color: theme.colorScheme.primary, size: 20),
+              const SizedBox(width: 6),
+              Text('أداء آخر 7 أيام',
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.bold)),
+              const Spacer(),
+              _miniLegend(Colors.green, 'مبيعات'),
+              const SizedBox(width: 10),
+              _miniLegend(Colors.red, 'مصاريف'),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 110,
+            child: maxY <= 0
+                ? Center(
+                    child: Text('لا توجد بيانات حديثة',
+                        style: TextStyle(
+                            color: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.5),
+                            fontSize: 12)),
+                  )
+                : BarChart(
+                    BarChartData(
+                      maxY: maxY,
+                      alignment: BarChartAlignment.spaceAround,
+                      barTouchData: BarTouchData(
+                        touchTooltipData: BarTouchTooltipData(
+                          getTooltipItem: (group, gIdx, rod, rIdx) {
+                            return BarTooltipItem(
+                              _formatNum(rod.toY),
+                              const TextStyle(
+                                  color: Colors.white, fontSize: 11),
+                            );
+                          },
+                        ),
+                      ),
+                      titlesData: FlTitlesData(
+                        leftTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 22,
+                            getTitlesWidget: (value, meta) {
+                              final i = value.toInt();
+                              if (i < 0 || i >= data.length) {
+                                return const Text('');
+                              }
+                              final d = data[i]['date'] as DateTime;
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  dayNames[d.weekday % 7],
+                                  style: TextStyle(
+                                      fontSize: 9,
+                                      color: theme.colorScheme.onSurface
+                                          .withValues(alpha: 0.7)),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      gridData: const FlGridData(show: false),
+                      borderData: FlBorderData(show: false),
+                      barGroups: data.asMap().entries.map((e) {
+                        final i = e.key;
+                        final d = e.value;
+                        return BarChartGroupData(x: i, barsSpace: 3, barRods: [
+                          BarChartRodData(
+                            toY: d['sales'] as double,
+                            color: Colors.green,
+                            width: 8,
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(3),
+                              topRight: Radius.circular(3),
+                            ),
+                          ),
+                          BarChartRodData(
+                            toY: d['expenses'] as double,
+                            color: Colors.red.shade400,
+                            width: 8,
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(3),
+                              topRight: Radius.circular(3),
+                            ),
+                          ),
+                        ]);
+                      }).toList(),
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _miniStat('مبيعات الأسبوع', _formatNum(totalSales), Colors.green),
+              Container(
+                  width: 1, height: 22,
+                  color: theme.dividerColor.withValues(alpha: 0.5)),
+              _miniStat('مصاريف الأسبوع', _formatNum(totalExpenses), Colors.red),
+              Container(
+                  width: 1, height: 22,
+                  color: theme.dividerColor.withValues(alpha: 0.5)),
+              _miniStat('الصافي', _formatNum(totalSales - totalExpenses),
+                  totalSales - totalExpenses >= 0 ? Colors.blue : Colors.deepOrange),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _miniLegend(Color color, String label) {
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+      const SizedBox(width: 4),
+      Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+    ]);
+  }
+
+  Widget _miniStat(String label, String value, Color color) {
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      Text(value, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
+      Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+    ]);
   }
 }
 
