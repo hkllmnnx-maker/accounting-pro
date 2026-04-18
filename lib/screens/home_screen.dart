@@ -18,6 +18,7 @@ import 'journal_screen.dart';
 import 'quotes_screen.dart';
 import 'settings_screen.dart';
 import 'global_search_screen.dart';
+import 'alerts_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -43,6 +44,7 @@ class HomeScreen extends StatelessWidget {
                   tooltip: 'البحث الشامل',
                   onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GlobalSearchScreen())),
                 ),
+                _buildAlertsButton(context, provider),
                 IconButton(
                   icon: Icon(provider.themeMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode),
                   tooltip: 'تبديل الوضع',
@@ -90,6 +92,48 @@ class HomeScreen extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildAlertsButton(BuildContext context, AppProvider provider) {
+    final outOfStock = provider.products.where((p) => p.quantity <= 0).length;
+    final lowStock = provider.products.where((p) => p.quantity > 0 && p.quantity <= 10).length;
+    final unpaidSales = provider.sales.where((inv) => inv.remaining > 0.01).length;
+    final unpaidPurchases = provider.purchases.where((inv) => inv.remaining > 0.01).length;
+    final overdueQuotes = provider.quotes
+        .where((q) => q.status == 'pending' && q.validUntil.isBefore(DateTime.now()))
+        .length;
+    final total = outOfStock + lowStock + unpaidSales + unpaidPurchases + overdueQuotes;
+
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.notifications_outlined),
+          tooltip: 'التنبيهات',
+          onPressed: () => Navigator.push(
+              context, MaterialPageRoute(builder: (_) => const AlertsScreen())),
+        ),
+        if (total > 0)
+          Positioned(
+            top: 6,
+            right: 6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+              decoration: BoxDecoration(
+                color: Colors.redAccent,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+              child: Text(
+                total > 99 ? '99+' : '$total',
+                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
