@@ -458,6 +458,121 @@ class DatabaseService {
     return catMap.entries.map((e) => {'category': e.key, 'amount': e.value}).toList();
   }
 
+  // ============= NEW: TOP PRODUCTS / TOP CLIENTS REPORTS =============
+  /// Returns the top selling products in the given period, ordered by total quantity sold.
+  /// Each entry contains: productId, productName, quantity, revenue, invoicesCount.
+  List<Map<String, dynamic>> getTopProducts(DateTime from, DateTime to, {int limit = 10}) {
+    final sales = getSales().where((s) =>
+        !s.date.isBefore(from) && !s.date.isAfter(to));
+    final Map<String, Map<String, dynamic>> agg = {};
+    for (var inv in sales) {
+      for (var item in inv.items) {
+        final key = item.productId.isNotEmpty ? item.productId : item.productName;
+        final existing = agg[key];
+        if (existing == null) {
+          agg[key] = {
+            'productId': item.productId,
+            'productName': item.productName,
+            'quantity': item.quantity,
+            'revenue': item.total,
+            'invoicesCount': 1,
+          };
+        } else {
+          existing['quantity'] = (existing['quantity'] as int) + item.quantity;
+          existing['revenue'] = (existing['revenue'] as double) + item.total;
+          existing['invoicesCount'] = (existing['invoicesCount'] as int) + 1;
+        }
+      }
+    }
+    final list = agg.values.toList();
+    list.sort((a, b) => (b['quantity'] as int).compareTo(a['quantity'] as int));
+    return list.take(limit).toList();
+  }
+
+  /// Returns the top clients in the given period, ordered by total purchases.
+  /// Each entry contains: clientId, clientName, totalSales, invoicesCount, lastPurchase.
+  List<Map<String, dynamic>> getTopClients(DateTime from, DateTime to, {int limit = 10}) {
+    final sales = getSales().where((s) =>
+        !s.date.isBefore(from) && !s.date.isAfter(to) && s.contactName.isNotEmpty);
+    final Map<String, Map<String, dynamic>> agg = {};
+    for (var inv in sales) {
+      final key = inv.contactId.isNotEmpty ? inv.contactId : inv.contactName;
+      final existing = agg[key];
+      if (existing == null) {
+        agg[key] = {
+          'clientId': inv.contactId,
+          'clientName': inv.contactName,
+          'totalSales': inv.totalAmount,
+          'invoicesCount': 1,
+          'lastPurchase': inv.date,
+        };
+      } else {
+        existing['totalSales'] = (existing['totalSales'] as double) + inv.totalAmount;
+        existing['invoicesCount'] = (existing['invoicesCount'] as int) + 1;
+        final last = existing['lastPurchase'] as DateTime;
+        if (inv.date.isAfter(last)) existing['lastPurchase'] = inv.date;
+      }
+    }
+    final list = agg.values.toList();
+    list.sort((a, b) => (b['totalSales'] as double).compareTo(a['totalSales'] as double));
+    return list.take(limit).toList();
+  }
+
+  /// Returns top suppliers by total purchases in the given period.
+  List<Map<String, dynamic>> getTopSuppliers(DateTime from, DateTime to, {int limit = 10}) {
+    final purchases = getPurchases().where((p) =>
+        !p.date.isBefore(from) && !p.date.isAfter(to) && p.contactName.isNotEmpty);
+    final Map<String, Map<String, dynamic>> agg = {};
+    for (var inv in purchases) {
+      final key = inv.contactId.isNotEmpty ? inv.contactId : inv.contactName;
+      final existing = agg[key];
+      if (existing == null) {
+        agg[key] = {
+          'supplierId': inv.contactId,
+          'supplierName': inv.contactName,
+          'totalPurchases': inv.totalAmount,
+          'invoicesCount': 1,
+          'lastPurchase': inv.date,
+        };
+      } else {
+        existing['totalPurchases'] = (existing['totalPurchases'] as double) + inv.totalAmount;
+        existing['invoicesCount'] = (existing['invoicesCount'] as int) + 1;
+        final last = existing['lastPurchase'] as DateTime;
+        if (inv.date.isAfter(last)) existing['lastPurchase'] = inv.date;
+      }
+    }
+    final list = agg.values.toList();
+    list.sort((a, b) => (b['totalPurchases'] as double).compareTo(a['totalPurchases'] as double));
+    return list.take(limit).toList();
+  }
+
+  /// Returns inventory valuation summary: totalProducts, totalQuantity, totalCostValue, totalSellValue, expectedProfit.
+  Map<String, dynamic> getInventoryValuation() {
+    final products = getProducts();
+    double costValue = 0, sellValue = 0;
+    int totalQuantity = 0;
+    int outOfStock = 0, lowStock = 0;
+    for (var p in products) {
+      costValue += p.buyPrice * p.quantity;
+      sellValue += p.sellPrice * p.quantity;
+      totalQuantity += p.quantity;
+      if (p.quantity <= 0) {
+        outOfStock++;
+      } else if (p.quantity <= 10) {
+        lowStock++;
+      }
+    }
+    return {
+      'totalProducts': products.length,
+      'totalQuantity': totalQuantity,
+      'costValue': costValue,
+      'sellValue': sellValue,
+      'expectedProfit': sellValue - costValue,
+      'outOfStock': outOfStock,
+      'lowStock': lowStock,
+    };
+  }
+
   // ============= SAMPLE DATA =============
   Future<void> _loadSampleData() async {
     final clients = [

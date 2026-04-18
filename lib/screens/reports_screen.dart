@@ -22,7 +22,7 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
-    _tabC = TabController(length: 4, vsync: this);
+    _tabC = TabController(length: 6, vsync: this);
     _applyPreset('month');
   }
 
@@ -120,6 +120,8 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                   Tab(text: 'المبيعات والمشتريات'),
                   Tab(text: 'المصاريف'),
                   Tab(text: 'الأرباح'),
+                  Tab(text: 'الأكثر مبيعاً'),
+                  Tab(text: 'أفضل العملاء'),
                 ],
               ),
             ),
@@ -131,6 +133,8 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
                   _buildSalesPurchases(provider),
                   _buildExpensesChart(provider),
                   _buildProfitReport(provider, filteredStats),
+                  _buildTopProducts(provider),
+                  _buildTopClients(provider),
                 ]),
               ),
             ]),
@@ -495,6 +499,210 @@ class _ReportsScreenState extends State<ReportsScreen> with SingleTickerProvider
             ]),
           ),
         ),
+      ]),
+    );
+  }
+
+  // ============= TOP PRODUCTS REPORT =============
+  Widget _buildTopProducts(AppProvider provider) {
+    final topProducts = provider.getTopProducts(_fromDate, _toDate, limit: 20);
+    final inv = provider.inventoryValuation;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        // Inventory summary card
+        Card(
+          color: Colors.teal.withValues(alpha: 0.05),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Icon(Icons.inventory_2, color: Colors.teal.shade700),
+                const SizedBox(width: 8),
+                const Text('قيمة المخزون الحالية',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              ]),
+              const Divider(),
+              Wrap(spacing: 12, runSpacing: 8, children: [
+                _miniStat('عدد الأصناف', '${inv['totalProducts']}', Colors.blue),
+                _miniStat('إجمالي الكميات', '${inv['totalQuantity']}', Colors.purple),
+                _miniStat('قيمة التكلفة', formatCurrency(inv['costValue'] ?? 0), Colors.orange),
+                _miniStat('قيمة البيع', formatCurrency(inv['sellValue'] ?? 0), Colors.green),
+                _miniStat('الربح المتوقع', formatCurrency(inv['expectedProfit'] ?? 0), Colors.teal),
+                if ((inv['outOfStock'] as int) > 0)
+                  _miniStat('نفد المخزون', '${inv['outOfStock']}', Colors.red),
+                if ((inv['lowStock'] as int) > 0)
+                  _miniStat('مخزون منخفض', '${inv['lowStock']}', Colors.amber.shade800),
+              ]),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(children: [
+          Icon(Icons.local_fire_department, color: Colors.deepOrange),
+          const SizedBox(width: 6),
+          const Text('المنتجات الأكثر مبيعاً',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+        ]),
+        const SizedBox(height: 8),
+        if (topProducts.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(child: Text('لا توجد مبيعات في هذه الفترة',
+                style: TextStyle(color: Colors.grey))),
+          )
+        else
+          ...topProducts.asMap().entries.map((entry) {
+            final i = entry.key;
+            final p = entry.value;
+            final rankColor = i == 0
+                ? Colors.amber.shade700
+                : i == 1
+                    ? Colors.grey.shade500
+                    : i == 2
+                        ? Colors.brown.shade400
+                        : Colors.blueGrey;
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: rankColor,
+                  child: Text('${i + 1}',
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+                title: Text(p['productName'] as String,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text('الكمية المباعة: ${p['quantity']}  •  ${p['invoicesCount']} عملية'),
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(formatCurrency(p['revenue'] as double),
+                        style: const TextStyle(
+                            color: Colors.green, fontWeight: FontWeight.bold)),
+                    const Text('الإيرادات',
+                        style: TextStyle(fontSize: 10, color: Colors.grey)),
+                  ],
+                ),
+              ),
+            );
+          }),
+      ]),
+    );
+  }
+
+  // ============= TOP CLIENTS REPORT =============
+  Widget _buildTopClients(AppProvider provider) {
+    final topClients = provider.getTopClients(_fromDate, _toDate, limit: 20);
+    final topSuppliers = provider.getTopSuppliers(_fromDate, _toDate, limit: 10);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Icon(Icons.star, color: Colors.amber.shade700),
+          const SizedBox(width: 6),
+          const Text('أفضل العملاء (الأعلى شراءً)',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+        ]),
+        const SizedBox(height: 8),
+        if (topClients.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: Text('لا توجد مبيعات في هذه الفترة',
+                style: TextStyle(color: Colors.grey))),
+          )
+        else
+          ...topClients.asMap().entries.map((entry) {
+            final i = entry.key;
+            final c = entry.value;
+            final rankColor = i == 0
+                ? Colors.amber.shade700
+                : i == 1
+                    ? Colors.grey.shade500
+                    : i == 2
+                        ? Colors.brown.shade400
+                        : Colors.blue;
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: rankColor,
+                  child: Text('${i + 1}',
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+                title: Text(c['clientName'] as String,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text('${c['invoicesCount']} فاتورة  •  آخر شراء: '
+                    '${formatDate(c['lastPurchase'] as DateTime)}'),
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(formatCurrency(c['totalSales'] as double),
+                        style: const TextStyle(
+                            color: Colors.green, fontWeight: FontWeight.bold)),
+                    const Text('إجمالي المشتريات',
+                        style: TextStyle(fontSize: 10, color: Colors.grey)),
+                  ],
+                ),
+              ),
+            );
+          }),
+        const SizedBox(height: 16),
+        const Divider(),
+        Row(children: [
+          Icon(Icons.local_shipping, color: Colors.deepOrange.shade700),
+          const SizedBox(width: 6),
+          const Text('أكبر الموردين',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+        ]),
+        const SizedBox(height: 8),
+        if (topSuppliers.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Center(child: Text('لا توجد مشتريات في هذه الفترة',
+                style: TextStyle(color: Colors.grey))),
+          )
+        else
+          ...topSuppliers.asMap().entries.map((entry) {
+            final i = entry.key;
+            final s = entry.value;
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.deepOrange.shade300,
+                  child: Text('${i + 1}',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+                title: Text(s['supplierName'] as String,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text('${s['invoicesCount']} فاتورة'),
+                trailing: Text(formatCurrency(s['totalPurchases'] as double),
+                    style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+              ),
+            );
+          }),
+      ]),
+    );
+  }
+
+  Widget _miniStat(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+        Text(value,
+            style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.bold)),
       ]),
     );
   }

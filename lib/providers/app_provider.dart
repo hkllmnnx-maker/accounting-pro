@@ -172,6 +172,17 @@ class AppProvider extends ChangeNotifier {
   List<Map<String, dynamic>> get monthlySalesData => _db.getMonthlySalesData();
   List<Map<String, dynamic>> get expensesByCategory => _db.getExpensesByCategory();
 
+  // Top reports
+  List<Map<String, dynamic>> getTopProducts(DateTime from, DateTime to, {int limit = 10}) =>
+      _db.getTopProducts(from, to, limit: limit);
+  List<Map<String, dynamic>> getTopClients(DateTime from, DateTime to, {int limit = 10}) =>
+      _db.getTopClients(from, to, limit: limit);
+  List<Map<String, dynamic>> getTopSuppliers(DateTime from, DateTime to, {int limit = 10}) =>
+      _db.getTopSuppliers(from, to, limit: limit);
+
+  // Inventory valuation
+  Map<String, dynamic> get inventoryValuation => _db.getInventoryValuation();
+
   // Backup & Restore
   Future<Map<String, dynamic>> exportAllData() => _db.exportAllData();
   Future<void> importAllData(Map<String, dynamic> data) async {
