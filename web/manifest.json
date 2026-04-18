@@ -1,13 +1,16 @@
 {
-    "name": "accounting_pro",
-    "short_name": "accounting_pro",
+    "name": "Accounting Pro - محاسبة احترافية",
+    "short_name": "Accounting Pro",
+    "lang": "ar",
+    "dir": "rtl",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#1565C0",
+    "theme_color": "#1565C0",
+    "description": "تطبيق محاسبي احترافي لإدارة المبيعات، المشتريات، المخزون، الفواتير، والتقارير المالية. يدعم العربية بالكامل.",
+    "orientation": "any",
     "prefer_related_applications": false,
+    "categories": ["business", "finance", "productivity"],
     "icons": [
         {
             "src": "icons/Icon-192.png",

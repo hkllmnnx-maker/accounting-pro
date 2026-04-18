@@ -1,38 +1,123 @@
 <!DOCTYPE html>
-<html>
+<html lang="ar" dir="rtl">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Accounting Pro - تطبيق محاسبي احترافي لإدارة المبيعات، المشتريات، المخزون، الفواتير والتقارير المالية. يدعم العربية بالكامل.">
+  <meta name="keywords" content="محاسبة, accounting, فواتير, مخزون, تقارير مالية, إدارة الأعمال, ERP, POS">
+  <meta name="theme-color" content="#1565C0">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Accounting Pro - محاسبة احترافية">
+  <meta property="og:description" content="تطبيق محاسبي متكامل لإدارة الأعمال والحسابات بواجهة عربية كاملة.">
+  <meta property="og:image" content="icons/Icon-512.png">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="accounting_pro">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Accounting Pro">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>accounting_pro</title>
+  <title>Accounting Pro | محاسبة احترافية</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+        Arial, "Noto Sans Arabic", "Tahoma", sans-serif;
+    }
+    #loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      z-index: 9999;
+      transition: opacity .4s ease-out;
+    }
+    #loading.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .logo-circle {
+      width: 88px;
+      height: 88px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.25);
+      margin-bottom: 22px;
+    }
+    .logo-icon {
+      font-size: 44px;
+      color: #fff;
+    }
+    .app-title {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin: 0;
+    }
+    .app-subtitle {
+      font-size: 14px;
+      opacity: 0.85;
+      margin-top: 4px;
+      margin-bottom: 28px;
+    }
+    .spinner {
+      width: 38px;
+      height: 38px;
+      border: 3px solid rgba(255,255,255,0.25);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .footer-note {
+      position: absolute;
+      bottom: 18px;
+      font-size: 11px;
+      opacity: 0.7;
+    }
+  </style>
 </head>
 <body>
+  <div id="loading">
+    <div class="logo-circle">
+      <span class="logo-icon">💼</span>
+    </div>
+    <h1 class="app-title">Accounting Pro</h1>
+    <p class="app-subtitle">محاسبة احترافية متكاملة</p>
+    <div class="spinner"></div>
+    <div class="footer-note">جاري تحميل التطبيق...</div>
+  </div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var l = document.getElementById('loading');
+      if (l) {
+        l.classList.add('hidden');
+        setTimeout(function() { l.remove(); }, 500);
+      }
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
