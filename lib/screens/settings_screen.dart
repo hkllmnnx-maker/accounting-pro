@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+import '../services/csv_service.dart';
+import '../services/file_download_service.dart';
 import '../widgets/common_widgets.dart';
 import 'lock_screen.dart';
 
@@ -143,6 +145,14 @@ class SettingsScreen extends StatelessWidget {
                         subtitle: const Text('تصدير جميع البيانات كنص JSON'),
                         trailing: const Icon(Icons.chevron_left),
                         onTap: () => _exportData(context, provider),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.table_chart, color: Colors.green),
+                        title: const Text('تصدير إلى CSV'),
+                        subtitle: const Text('تصدير العملاء، المنتجات، الفواتير... بصيغة Excel'),
+                        trailing: const Icon(Icons.chevron_left),
+                        onTap: () => _exportCsv(context, provider),
                       ),
                       const Divider(height: 1),
                       ListTile(
@@ -378,6 +388,115 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _exportCsv(BuildContext context, AppProvider provider) async {
+    final options = <_CsvOption>[
+      _CsvOption('clients.csv', 'العملاء', Icons.people, Colors.blue,
+          () => CsvService.clientsToCsv(provider.clients)),
+      _CsvOption('suppliers.csv', 'الموردين', Icons.local_shipping, Colors.orange,
+          () => CsvService.suppliersToCsv(provider.suppliers)),
+      _CsvOption('employees.csv', 'الموظفين', Icons.badge, Colors.purple,
+          () => CsvService.employeesToCsv(provider.employees)),
+      _CsvOption('products.csv', 'المنتجات', Icons.inventory_2, Colors.teal,
+          () => CsvService.productsToCsv(provider.products)),
+      _CsvOption('sales.csv', 'فواتير البيع', Icons.point_of_sale, Colors.green,
+          () => CsvService.invoicesToCsv(provider.sales, 'sale')),
+      _CsvOption('sales_items.csv', 'تفاصيل أصناف البيع', Icons.list_alt, Colors.green.shade300,
+          () => CsvService.invoiceItemsToCsv(provider.sales, 'sale')),
+      _CsvOption('purchases.csv', 'فواتير الشراء', Icons.shopping_cart, Colors.deepOrange,
+          () => CsvService.invoicesToCsv(provider.purchases, 'purchase')),
+      _CsvOption('purchases_items.csv', 'تفاصيل أصناف الشراء', Icons.list_alt, Colors.deepOrange.shade300,
+          () => CsvService.invoiceItemsToCsv(provider.purchases, 'purchase')),
+      _CsvOption('expenses.csv', 'المصاريف', Icons.money_off, Colors.red,
+          () => CsvService.expensesToCsv(provider.expenses)),
+      _CsvOption('vouchers.csv', 'السندات (قبض/صرف)', Icons.receipt_long, Colors.indigo,
+          () => CsvService.vouchersToCsv(provider.vouchers)),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Icon(Icons.table_chart, color: Colors.green.shade700),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text('اختر البيانات المراد تصديرها',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ]),
+                const Divider(),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: options.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (_, i) {
+                      final o = options[i];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: o.color.withValues(alpha: 0.15),
+                          child: Icon(o.icon, color: o.color),
+                        ),
+                        title: Text(o.label,
+                            style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(o.fileName,
+                            style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                        trailing: const Icon(Icons.download, color: Colors.green),
+                        onTap: () async {
+                          final csv = o.builder();
+                          if (csv.length <= 3) {
+                            // BOM only -> empty
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('لا توجد بيانات للتصدير')),
+                            );
+                            return;
+                          }
+                          try {
+                            await FileDownloadService.downloadText(
+                              filename: o.fileName,
+                              content: csv,
+                            );
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('تم تصدير ${o.label} بنجاح'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('خطأ: $e'), backgroundColor: Colors.red),
+                              );
+                            }
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _importData(BuildContext context, AppProvider provider) async {
     final controller = TextEditingController();
     showDialog(
@@ -547,4 +666,13 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _CsvOption {
+  final String fileName;
+  final String label;
+  final IconData icon;
+  final Color color;
+  final String Function() builder;
+  _CsvOption(this.fileName, this.label, this.icon, this.color, this.builder);
 }
