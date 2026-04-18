@@ -4,11 +4,17 @@
 
 ## 🌐 المعاينة المباشرة (Live Demo)
 
-**🚀 جرّب التطبيق الآن عبر الرابط التالي:**
+**🚀 جرّب التطبيق الآن عبر أحد الروابط التالية:**
 
+### ⚡ معاينة فورية (Sandbox - أسرع وصول)
+### 👉 [https://5060-imv5p1h6qndj60616coqd-d0b9e1e2.sandbox.novita.ai](https://5060-imv5p1h6qndj60616coqd-d0b9e1e2.sandbox.novita.ai)
+
+### 🌍 النسخة الرسمية (GitHub Pages)
 ### 👉 [https://hkllmnnx-maker.github.io/accounting-pro/](https://hkllmnnx-maker.github.io/accounting-pro/)
 
-> يتم نشر التطبيق تلقائياً على GitHub Pages مع كل تحديث. يحتوي التطبيق على بيانات تجريبية جاهزة للاستعراض (عملاء، موردين، منتجات، فواتير، إلخ).
+> 💡 **رابط Sandbox**: معاينة لحظية مباشرة من بيئة التطوير، تعكس آخر التحديثات فوراً.
+>
+> 🔄 **رابط GitHub Pages**: يتم نشر التطبيق تلقائياً مع كل تحديث للمستودع.
 
 [![Deploy Flutter Web](https://github.com/hkllmnnx-maker/accounting-pro/actions/workflows/deploy.yml/badge.svg)](https://github.com/hkllmnnx-maker/accounting-pro/actions/workflows/deploy.yml)
 
